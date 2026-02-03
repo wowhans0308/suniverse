@@ -1,4 +1,7 @@
-// --- 1단계: 전역 변수 및 요소 선택 (이전과 동일) ---
+const supabaseUrl = 'YOUR_SUPABASE_URL';
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
 const reviewsListContainer = document.getElementById('my-reviews-list');
 const modalOverlay = document.querySelector('.modal-overlay');
@@ -15,14 +18,11 @@ const reviewTextarea = document.getElementById('review-textarea');
 const backToDetailsBtn = document.getElementById('back-to-details-btn');
 const saveButton = document.getElementById('save-button');
 const logoutButton = document.getElementById('logout-button');
-const backLink = document.querySelector('.home-link');
 
-const VERSION_PREFIX = sessionStorage.getItem('appVersionPrefix') || 'v_unknown_';
+const GROUP_ID = sessionStorage.getItem('appGroupId') || 'unknown_group';
 let currentMovieData = {};
 
-// --- 2단계: 이벤트 리스너 설정 (이전과 동일) ---
 document.addEventListener('DOMContentLoaded', () => {
-    if (backLink) { backLink.href = 'ocn.html'; }
     loadMyReviews();
 });
 
@@ -34,46 +34,48 @@ if (logoutButton) {
     });
 }
 
-// --- 3단계: 리뷰 불러오기 및 화면 표시 함수 (이전과 동일) ---
 async function loadMyReviews() {
     if(!reviewsListContainer) return;
     reviewsListContainer.innerHTML = '<p class="loading">리뷰를 불러오는 중...</p>';
-    const allKeys = Object.keys(localStorage);
-    const reviewItems = [];
-    await Promise.all(allKeys.map(async (key) => {
-        if (key.startsWith(VERSION_PREFIX) && !key.includes('recentSearches')) {
-            const savedValue = localStorage.getItem(key);
-            if (!savedValue) return;
-            try {
-                const reviewData = JSON.parse(savedValue);
-                if (reviewData && reviewData.reviewText && reviewData.mediaType) {
-                    const originalMovieId = key.substring(VERSION_PREFIX.length);
-                    const itemDetails = await fetchItemDetails(reviewData.mediaType, originalMovieId);
-                    if (itemDetails) {
-                        itemDetails.media_type = reviewData.mediaType;
-                        reviewItems.push(itemDetails);
-                    }
-                }
-            } catch(e) { console.warn(`오래된 형식의 리뷰 데이터를 건너뜁니다: ${key}`); }
-        }
-    }));
-    reviewItems.sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name));
-    if (reviewItems.length === 0) {
+    
+    const { data: reviews, error } = await supabase.from('reviews').select('*').eq('group_id', GROUP_ID);
+
+    if (error) {
+        reviewsListContainer.innerHTML = `<p class="no-results">리뷰를 불러오는 데 실패했습니다.</p>`;
+        return;
+    }
+    if (reviews.length === 0) {
         reviewsListContainer.innerHTML = '<p class="no-results">아직 작성한 리뷰가 없습니다.</p>';
         return;
     }
+    
+    const reviewItems = [];
+    await Promise.all(reviews.map(async (review) => {
+        const itemDetails = await fetchItemDetails(review.media_type, review.movie_id);
+        if (itemDetails) {
+            itemDetails.media_type = review.media_type;
+            reviewItems.push(itemDetails);
+        }
+    }));
+    
+    reviewItems.sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name));
+    
     const cardPromises = reviewItems.map(item => createCardHTML(item));
     const cards = await Promise.all(cardPromises);
     reviewsListContainer.innerHTML = cards.join('');
 }
 
+async function createCardHTML(item) {
+    const credits = await fetchCredits(item.media_type, item.id);
+    const title = item.title || item.name;
+    const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
+    return `<div class="movie-card my-review-version" data-id="${item.id}" data-type="${item.media_type}"><div class="movie-card-poster"><img src="${posterPath}" alt="${title} 포스터"></div><div class="movie-info"><h3>${title}</h3><div class="credits-info"><span><strong>감독:</strong> ${credits.director}</span><span><strong>출연:</strong> ${credits.cast}</span></div></div></div>`;
+}
 
-// --- 4단계: 모달 관련 기능 (✨ 대규모 수정) ---
 function closeModal() { if (modalOverlay) modalOverlay.classList.remove('visible'); }
 if (closeButton) closeButton.addEventListener('click', closeModal);
 if (modalOverlay) modalOverlay.addEventListener('click', (event) => { if (event.target === modalOverlay) closeModal(); });
 
-// ✨ [수정] My Reviews 페이지의 카드 클릭 이벤트
 if (reviewsListContainer) {
     reviewsListContainer.addEventListener('click', async (event) => {
         const card = event.target.closest('.movie-card');
@@ -82,64 +84,59 @@ if (reviewsListContainer) {
             const mediaType = card.dataset.type;
             const details = await fetchItemDetails(mediaType, movieId);
             if (!details) { alert('상세 정보를 불러오는 데 실패했습니다.'); return; }
-
-            // 현재 영화 데이터 저장 (저장 버튼에서 사용)
             currentMovieData = details;
             currentMovieData.media_type = mediaType;
-            
-            // ✨ 상세 정보 뷰를 건너뛰고, 바로 리뷰 뷰를 보여주는 로직 실행
-            if(reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
-            const savedReviewJSON = localStorage.getItem(VERSION_PREFIX + currentMovieData.id);
-            const savedReviewData = savedReviewJSON ? JSON.parse(savedReviewJSON) : null;
-            if(reviewTextarea) reviewTextarea.value = savedReviewData ? savedReviewData.reviewText : '';
-            
-            // 뷰 전환 및 모달 표시
-            if(detailsView) detailsView.style.display = 'none';
-            if(reviewView) reviewView.style.display = 'block';
+            await displayDetailsView();
             if (modalOverlay) modalOverlay.classList.add('visible');
         }
     });
 }
-
-// ✨ [수정] '돌아가기' 버튼은 이제 상세 정보 뷰가 아닌, 모달을 바로 닫습니다.
+async function displayDetailsView() {
+    const posterPath = currentMovieData.poster_path ? `https://image.tmdb.org/t/p/w500${currentMovieData.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
+    const credits = await fetchCredits(currentMovieData.media_type, currentMovieData.id);
+    if(modalPoster) modalPoster.src = posterPath;
+    if(modalTitle) modalTitle.textContent = currentMovieData.title || currentMovieData.name;
+    if(modalCredits) modalCredits.innerHTML = `<p><strong>감독:</strong> ${credits.director}</p><p><strong>출연:</strong> ${credits.cast}</p>`;
+    if(modalOverview) modalOverview.textContent = currentMovieData.overview || '줄거리 정보가 없습니다.';
+    if(detailsView) detailsView.style.display = 'block';
+    if(reviewView) reviewView.style.display = 'none';
+}
+if(showReviewViewBtn) {
+    showReviewViewBtn.addEventListener('click', async () => {
+        if(reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
+        const { data, error } = await supabase.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, group_id: GROUP_ID }).single();
+        if(reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
+        if(detailsView) detailsView.style.display = 'none';
+        if(reviewView) reviewView.style.display = 'block';
+    });
+}
 if(backToDetailsBtn) {
     backToDetailsBtn.addEventListener('click', () => {
-        closeModal();
+        if(detailsView) detailsView.style.display = 'block';
+        if(reviewView) reviewView.style.display = 'none';
     });
 }
-
-// '저장' 버튼 기능
 if(saveButton){
-    saveButton.addEventListener('click', () => {
+    saveButton.addEventListener('click', async () => {
         const reviewText = reviewTextarea.value.trim();
-        const storageKey = VERSION_PREFIX + currentMovieData.id;
-        const dataToSave = { 
-            reviewText: reviewText, 
-            mediaType: currentMovieData.media_type 
+        const reviewData = { 
+            movie_id: currentMovieData.id, 
+            media_type: currentMovieData.media_type,
+            review_text: reviewText, 
+            group_id: GROUP_ID
         };
         if (reviewText) {
-            localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-            alert('리뷰가 수정되었습니다!');
+            const { error } = await supabase.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
+            if (error) { alert('리뷰 수정에 실패했습니다: ' + error.message); } 
+            else { alert('리뷰가 수정되었습니다!'); }
         } else {
-            localStorage.removeItem(storageKey);
-            alert('리뷰가 삭제되었습니다.');
+            const { error } = await supabase.from('reviews').delete().match({ movie_id: currentMovieData.id, group_id: GROUP_ID });
+            if (error) { alert('리뷰 삭제에 실패했습니다: ' + error.message); }
+            else { alert('리뷰가 삭제되었습니다.'); }
         }
         closeModal();
-        loadMyReviews(); // 목록 새로고침
+        loadMyReviews();
     });
-}
-
-// 이 페이지에서는 사용되지 않는 함수들이지만, 혹시 모를 참조 오류를 막기 위해 비워둡니다.
-async function displayDetailsView() {}
-if(showReviewViewBtn) { showReviewViewBtn.style.display = 'none'; }
-
-
-// --- 5단계: API 및 카드 생성 함수 (이전과 동일) ---
-async function createCardHTML(item) {
-    const credits = await fetchCredits(item.media_type, item.id);
-    const title = item.title || item.name;
-    const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
-    return `<div class="movie-card my-review-version" data-id="${item.id}" data-type="${item.media_type}"><div class="movie-card-poster"><img src="${posterPath}" alt="${title} 포스터"></div><div class="movie-info"><h3>${title}</h3><div class="credits-info"><span><strong>감독:</strong> ${credits.director}</span><span><strong>출연:</strong> ${credits.cast}</span></div></div></div>`;
 }
 
 async function fetchCredits(mediaType, id) {

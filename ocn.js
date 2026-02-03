@@ -1,4 +1,7 @@
-// --- 1단계: 전역 변수 및 요소 선택 ---
+const supabaseUrl = 'YOUR_SUPABASE_URL'; // Supabase 대시보드에서 복사
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'; // Supabase 대시보드에서 복사
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
 const searchInput = document.querySelector('.search-input');
 const searchButton = document.querySelector('.search-button');
 const categoryButtons = document.querySelectorAll('.cat-btn');
@@ -21,12 +24,11 @@ const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
 
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
-const VERSION_PREFIX = sessionStorage.getItem('appVersionPrefix') || 'v_unknown_';
+const GROUP_ID = sessionStorage.getItem('appGroupId') || 'unknown_group';
 let currentCategory = '전체';
 let lastResults = [];
 let currentMovieData = {};
 
-// --- 2단계: 이벤트 리스너 설정 ---
 document.addEventListener('DOMContentLoaded', () => { displayRecentSearches(); });
 
 if (searchButton) {
@@ -45,13 +47,12 @@ if (searchInput) {
 if (logoutButton) {
     logoutButton.addEventListener('click', () => {
         sessionStorage.clear();
-        localStorage.removeItem(VERSION_PREFIX + 'recentSearches');
+        localStorage.removeItem('recentSearches'); // 이제 버전 구분이 없으므로 키를 단순화
         alert('로그아웃되었습니다.');
         location.href = 'index.html';
     });
 }
 
-// --- 3단계: API 관련 함수 ---
 async function fetchCredits(mediaType, id) {
     const url = `https://api.themoviedb.org/3/${mediaType}/${id}/credits?api_key=${API_KEY}&language=ko-KR`;
     try {
@@ -88,55 +89,54 @@ async function fetchItemDetails(mediaType, id) {
     } catch (error) { return null; }
 }
 
-// --- 4단계: 화면 표시 함수 ---
 async function displayResults() {
     if (!resultsSection) return;
-    resultsSection.innerHTML = '';
-    const displayedMovieIds = new Set();
-    let cardPromises = [];
-
-    // 1. 인물 검색 결과를 먼저 처리
-    const personResults = lastResults.filter(item => item.media_type === 'person');
-    personResults.forEach(person => {
-        person.known_for?.forEach(work => {
-            if (!displayedMovieIds.has(work.id) && (work.media_type === 'movie' || work.media_type === 'tv')) {
-                cardPromises.push(createCardHTML(work));
-                displayedMovieIds.add(work.id);
-            }
-        });
+    const filteredResults = lastResults.filter(item => {
+        const isAnimation = item.genre_ids?.includes(16);
+        if (currentCategory === '전체') return item.media_type === 'movie' || item.media_type === 'tv';
+        if (currentCategory === '영화') return item.media_type === 'movie' && !isAnimation;
+        if (currentCategory === '드라마') return item.media_type === 'tv' && !isAnimation;
+        if (currentCategory === '애니메이션') return isAnimation;
+        return false;
     });
 
-    // 2. 인물 외의 결과를 처리
-    const otherResults = lastResults.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
-    otherResults.forEach(item => {
+    const displayedMovieIds = new Set();
+    const cardPromises = [];
+    filteredResults.forEach(item => {
         if (!displayedMovieIds.has(item.id)) {
             cardPromises.push(createCardHTML(item));
             displayedMovieIds.add(item.id);
         }
     });
 
-    // 3. 필터링된 카드 HTML 생성
-    const cardsHTML = (await Promise.all(cardPromises)).filter(card => card !== '').join('');
-    resultsSection.innerHTML = cardsHTML;
+    const personResults = lastResults.filter(item => item.media_type === 'person');
+    personResults.forEach(person => {
+        person.known_for?.forEach(work => {
+            if (!displayedMovieIds.has(work.id)) {
+                const isAnimation = work.genre_ids?.includes(16);
+                if ( (currentCategory === '전체') ||
+                     (currentCategory === '영화' && work.media_type === 'movie' && !isAnimation) ||
+                     (currentCategory === '드라마' && work.media_type === 'tv' && !isAnimation) ||
+                     (currentCategory === '애니메이션' && isAnimation) )
+                {
+                    cardPromises.push(createCardHTML(work));
+                    displayedMovieIds.add(work.id);
+                }
+            }
+        });
+    });
 
-    if (resultsSection.innerHTML === '') {
-        resultsSection.innerHTML = '<p class="no-results">표시할 결과가 없습니다.</p>';
-    }
+    const cardsHTML = (await Promise.all(cardPromises)).join('');
+    resultsSection.innerHTML = cardsHTML || '<p class="no-results">표시할 결과가 없습니다.</p>';
 }
 
 async function createCardHTML(item) {
-    const isAnimation = item.genre_ids?.includes(16);
-    if (currentCategory === '영화' && (item.media_type !== 'movie' || isAnimation)) return '';
-    if (currentCategory === '드라마' && (item.media_type !== 'tv' || isAnimation)) return '';
-    if (currentCategory === '애니메이션' && !isAnimation) return '';
-
     const credits = await fetchCredits(item.media_type, item.id);
     const title = item.title || item.name;
     const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
     return `<div class="movie-card" data-id="${item.id}" data-type="${item.media_type}"><div class="movie-card-poster"><img src="${posterPath}" alt="${title} 포스터"></div><div class="movie-info"><h3>${title}</h3><div class="credits-info"><span><strong>감독:</strong> ${credits.director}</span><span><strong>출연:</strong> ${credits.cast}</span></div></div></div>`;
 }
 
-// --- 5단계: 분류 및 최근 검색어 기능 ---
 if (categoryButtons) {
     categoryButtons.forEach(button => {
         button.addEventListener('click', (event) => {
@@ -150,16 +150,16 @@ if (categoryButtons) {
 }
 
 function saveRecentSearch(term) {
-    let searches = JSON.parse(localStorage.getItem(VERSION_PREFIX + 'recentSearches')) || [];
+    let searches = JSON.parse(localStorage.getItem('recentSearches')) || [];
     searches = searches.filter(search => search.toLowerCase() !== term.toLowerCase());
     searches.unshift(term);
     if (searches.length > 10) searches = searches.slice(0, 10);
-    localStorage.setItem(VERSION_PREFIX + 'recentSearches', JSON.stringify(searches));
+    localStorage.setItem('recentSearches', JSON.stringify(searches));
 }
 
 function displayRecentSearches() {
     if (!recentSearchesContainer || !recentSearchesList) return;
-    let searches = JSON.parse(localStorage.getItem(VERSION_PREFIX + 'recentSearches')) || [];
+    let searches = JSON.parse(localStorage.getItem('recentSearches')) || [];
     if (searches.length > 0) {
         recentSearchesList.innerHTML = searches.map(term => `<span class="recent-search-item"><span>${term}</span><button class="delete-search-btn" data-term="${term}">&times;</button></span>`).join('');
         recentSearchesContainer.style.display = 'block';
@@ -173,9 +173,9 @@ if (recentSearchesList) {
         const target = event.target;
         if (target.classList.contains('delete-search-btn')) {
             const termToDelete = target.dataset.term;
-            let searches = JSON.parse(localStorage.getItem(VERSION_PREFIX + 'recentSearches')) || [];
+            let searches = JSON.parse(localStorage.getItem('recentSearches')) || [];
             searches = searches.filter(search => search !== termToDelete);
-            localStorage.setItem(VERSION_PREFIX + 'recentSearches', JSON.stringify(searches));
+            localStorage.setItem('recentSearches', JSON.stringify(searches));
             displayRecentSearches();
         } else if (target.closest('.recent-search-item')) {
             const searchTerm = target.closest('.recent-search-item').querySelector('span').textContent;
@@ -185,7 +185,6 @@ if (recentSearchesList) {
     });
 }
 
-// --- 6단계: 모달 관련 기능 ---
 function closeModal() { if (modalOverlay) modalOverlay.classList.remove('visible'); }
 if (closeButton) closeButton.addEventListener('click', closeModal);
 if (modalOverlay) modalOverlay.addEventListener('click', (event) => { if (event.target === modalOverlay) closeModal(); });
@@ -218,11 +217,10 @@ async function displayDetailsView() {
 }
 
 if(showReviewViewBtn) {
-    showReviewViewBtn.addEventListener('click', () => {
+    showReviewViewBtn.addEventListener('click', async () => {
         if(reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
-        const savedReviewJSON = localStorage.getItem(VERSION_PREFIX + currentMovieData.id);
-        const savedReviewData = savedReviewJSON ? JSON.parse(savedReviewJSON) : null;
-        if(reviewTextarea) reviewTextarea.value = savedReviewData ? savedReviewData.reviewText : '';
+        const { data, error } = await supabase.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, group_id: GROUP_ID }).single();
+        if(reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
         if(detailsView) detailsView.style.display = 'none';
         if(reviewView) reviewView.style.display = 'block';
     });
@@ -236,19 +234,22 @@ if(backToDetailsBtn) {
 }
 
 if(saveButton){
-    saveButton.addEventListener('click', () => {
+    saveButton.addEventListener('click', async () => {
         const reviewText = reviewTextarea.value.trim();
-        const storageKey = VERSION_PREFIX + currentMovieData.id;
-        const dataToSave = { 
-            reviewText: reviewText, 
-            mediaType: currentMovieData.media_type 
+        const reviewData = {
+            movie_id: currentMovieData.id,
+            media_type: currentMovieData.media_type,
+            review_text: reviewText,
+            group_id: GROUP_ID
         };
         if (reviewText) {
-            localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-            alert('리뷰가 저장되었습니다!');
+            const { error } = await supabase.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
+            if (error) { alert('리뷰 저장에 실패했습니다: ' + error.message); } 
+            else { alert('리뷰가 저장되었습니다!'); }
         } else {
-            localStorage.removeItem(storageKey);
-            alert('리뷰가 삭제되었습니다.');
+            const { error } = await supabase.from('reviews').delete().match({ movie_id: currentMovieData.id, group_id: GROUP_ID });
+            if (error) { alert('리뷰 삭제에 실패했습니다: ' + error.message); }
+            else { alert('리뷰가 삭제되었습니다.'); }
         }
         if(backToDetailsBtn) backToDetailsBtn.click();
     });
