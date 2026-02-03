@@ -1,5 +1,5 @@
-const supabaseUrl = 'YOUR_SUPABASE_URL'; // Supabase 대시보드에서 복사
-const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'; // Supabase 대시보드에서 복사
+const supabaseUrl = 'https://bmmhrilwjgfbcaefguyx.supabase.co';
+const supabaseKey = 'sb_publishable_wAuNSQzoLXuHF4pl-TWyzA_7dqW2kwF';
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 const searchInput = document.querySelector('.search-input');
@@ -29,25 +29,33 @@ let currentCategory = '전체';
 let lastResults = [];
 let currentMovieData = {};
 
-document.addEventListener('DOMContentLoaded', () => { displayRecentSearches(); });
+document.addEventListener('DOMContentLoaded', () => {
+    displayRecentSearches();
+});
 
 if (searchButton) {
     searchButton.addEventListener('click', () => {
         const searchTerm = searchInput.value.trim();
-        if (searchTerm === '') { return alert('검색어를 입력해주세요!'); }
+        if (searchTerm === '') {
+            return alert('검색어를 입력해주세요!');
+        }
         saveRecentSearch(searchTerm);
         fetchMovies(searchTerm);
     });
 }
+
 if (searchInput) {
     searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && searchButton) { searchButton.click(); }
+        if (event.key === 'Enter' && searchButton) {
+            searchButton.click();
+        }
     });
 }
+
 if (logoutButton) {
     logoutButton.addEventListener('click', () => {
         sessionStorage.clear();
-        localStorage.removeItem('recentSearches'); // 이제 버전 구분이 없으므로 키를 단순화
+        localStorage.removeItem('recentSearches');
         alert('로그아웃되었습니다.');
         location.href = 'index.html';
     });
@@ -62,12 +70,19 @@ async function fetchCredits(mediaType, id) {
         const director = data.crew?.find(person => person.job === 'Director')?.name || data.created_by?.[0]?.name || '정보 없음';
         const cast = data.cast?.slice(0, 5).map(person => person.name).join(', ') || '정보 없음';
         return { director, cast };
-    } catch (error) { return { director: '정보 없음', cast: '정보 없음' }; }
+    } catch (error) {
+        console.error('Credits 정보 로딩 에러:', error);
+        return { director: '정보 없음', cast: '정보 없음' };
+    }
 }
 
 async function fetchMovies(query) {
-    if (recentSearchesContainer) { recentSearchesContainer.style.display = 'none'; }
-    if (resultsSection) { resultsSection.innerHTML = '<p class="loading">검색 중...</p>'; }
+    if (recentSearchesContainer) {
+        recentSearchesContainer.style.display = 'none';
+    }
+    if (resultsSection) {
+        resultsSection.innerHTML = '<p class="loading">검색 중...</p>';
+    }
     const url = `https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&language=ko-KR&query=${query}`;
     try {
         const response = await fetch(url);
@@ -76,7 +91,10 @@ async function fetchMovies(query) {
         lastResults = data.results;
         await displayResults();
     } catch (error) {
-        if (resultsSection) { resultsSection.innerHTML = '<p class="no-results">오류가 발생했습니다.</p>'; }
+        console.error('API 에러:', error);
+        if (resultsSection) {
+            resultsSection.innerHTML = '<p class="no-results">오류가 발생했습니다.</p>';
+        }
     }
 }
 
@@ -86,49 +104,37 @@ async function fetchItemDetails(mediaType, id) {
         const response = await fetch(url);
         if (!response.ok) return null;
         return await response.json();
-    } catch (error) { return null; }
+    } catch (error) {
+        console.error('상세 정보 로딩 에러:', error);
+        return null;
+    }
 }
 
 async function displayResults() {
     if (!resultsSection) return;
-    const filteredResults = lastResults.filter(item => {
+    
+    const filteredByCat = lastResults.filter(item => {
+        if (item.media_type !== 'movie' && item.media_type !== 'tv') return false;
         const isAnimation = item.genre_ids?.includes(16);
-        if (currentCategory === '전체') return item.media_type === 'movie' || item.media_type === 'tv';
+        if (currentCategory === '전체') return true;
         if (currentCategory === '영화') return item.media_type === 'movie' && !isAnimation;
         if (currentCategory === '드라마') return item.media_type === 'tv' && !isAnimation;
         if (currentCategory === '애니메이션') return isAnimation;
         return false;
     });
 
-    const displayedMovieIds = new Set();
-    const cardPromises = [];
-    filteredResults.forEach(item => {
-        if (!displayedMovieIds.has(item.id)) {
-            cardPromises.push(createCardHTML(item));
-            displayedMovieIds.add(item.id);
-        }
-    });
+    resultsSection.innerHTML = '';
+    
+    if (filteredByCat.length === 0) {
+        resultsSection.innerHTML = '<p class="no-results">표시할 결과가 없습니다.</p>';
+        return;
+    }
 
-    const personResults = lastResults.filter(item => item.media_type === 'person');
-    personResults.forEach(person => {
-        person.known_for?.forEach(work => {
-            if (!displayedMovieIds.has(work.id)) {
-                const isAnimation = work.genre_ids?.includes(16);
-                if ( (currentCategory === '전체') ||
-                     (currentCategory === '영화' && work.media_type === 'movie' && !isAnimation) ||
-                     (currentCategory === '드라마' && work.media_type === 'tv' && !isAnimation) ||
-                     (currentCategory === '애니메이션' && isAnimation) )
-                {
-                    cardPromises.push(createCardHTML(work));
-                    displayedMovieIds.add(work.id);
-                }
-            }
-        });
-    });
-
+    const cardPromises = filteredByCat.map(item => createCardHTML(item));
     const cardsHTML = (await Promise.all(cardPromises)).join('');
-    resultsSection.innerHTML = cardsHTML || '<p class="no-results">표시할 결과가 없습니다.</p>';
+    resultsSection.innerHTML = cardsHTML;
 }
+
 
 async function createCardHTML(item) {
     const credits = await fetchCredits(item.media_type, item.id);
@@ -144,7 +150,9 @@ if (categoryButtons) {
             const clickedButton = event.target;
             clickedButton.classList.add('active');
             currentCategory = clickedButton.textContent;
-            if (lastResults.length > 0) { displayResults(); }
+            if (lastResults.length > 0) {
+                displayResults();
+            }
         });
     });
 }
@@ -179,15 +187,19 @@ if (recentSearchesList) {
             displayRecentSearches();
         } else if (target.closest('.recent-search-item')) {
             const searchTerm = target.closest('.recent-search-item').querySelector('span').textContent;
-            if(searchInput) searchInput.value = searchTerm;
-            if(searchButton) searchButton.click();
+            if (searchInput) searchInput.value = searchTerm;
+            if (searchButton) searchButton.click();
         }
     });
 }
 
-function closeModal() { if (modalOverlay) modalOverlay.classList.remove('visible'); }
+function closeModal() {
+    if (modalOverlay) modalOverlay.classList.remove('visible');
+}
 if (closeButton) closeButton.addEventListener('click', closeModal);
-if (modalOverlay) modalOverlay.addEventListener('click', (event) => { if (event.target === modalOverlay) closeModal(); });
+if (modalOverlay) modalOverlay.addEventListener('click', (event) => {
+    if (event.target === modalOverlay) closeModal();
+});
 
 if (resultsSection) {
     resultsSection.addEventListener('click', async (event) => {
@@ -196,7 +208,10 @@ if (resultsSection) {
             const movieId = card.dataset.id;
             const mediaType = card.dataset.type;
             const details = await fetchItemDetails(mediaType, movieId);
-            if (!details) { alert('상세 정보를 불러오는 데 실패했습니다.'); return; }
+            if (!details) {
+                alert('상세 정보를 불러오는 데 실패했습니다.');
+                return;
+            }
             currentMovieData = details;
             currentMovieData.media_type = mediaType;
             await displayDetailsView();
@@ -208,32 +223,32 @@ if (resultsSection) {
 async function displayDetailsView() {
     const posterPath = currentMovieData.poster_path ? `https://image.tmdb.org/t/p/w500${currentMovieData.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
     const credits = await fetchCredits(currentMovieData.media_type, currentMovieData.id);
-    if(modalPoster) modalPoster.src = posterPath;
-    if(modalTitle) modalTitle.textContent = currentMovieData.title || currentMovieData.name;
-    if(modalCredits) modalCredits.innerHTML = `<p><strong>감독:</strong> ${credits.director}</p><p><strong>출연:</strong> ${credits.cast}</p>`;
-    if(modalOverview) modalOverview.textContent = currentMovieData.overview || '줄거리 정보가 없습니다.';
-    if(detailsView) detailsView.style.display = 'block';
-    if(reviewView) reviewView.style.display = 'none';
+    if (modalPoster) modalPoster.src = posterPath;
+    if (modalTitle) modalTitle.textContent = currentMovieData.title || currentMovieData.name;
+    if (modalCredits) modalCredits.innerHTML = `<p><strong>감독:</strong> ${credits.director}</p><p><strong>출연:</strong> ${credits.cast}</p>`;
+    if (modalOverview) modalOverview.textContent = currentMovieData.overview || '줄거리 정보가 없습니다.';
+    if (detailsView) detailsView.style.display = 'block';
+    if (reviewView) reviewView.style.display = 'none';
 }
 
-if(showReviewViewBtn) {
+if (showReviewViewBtn) {
     showReviewViewBtn.addEventListener('click', async () => {
-        if(reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
+        if (reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
         const { data, error } = await supabase.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, group_id: GROUP_ID }).single();
-        if(reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
-        if(detailsView) detailsView.style.display = 'none';
-        if(reviewView) reviewView.style.display = 'block';
+        if (reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
+        if (detailsView) detailsView.style.display = 'none';
+        if (reviewView) reviewView.style.display = 'block';
     });
 }
 
-if(backToDetailsBtn) {
+if (backToDetailsBtn) {
     backToDetailsBtn.addEventListener('click', () => {
-        if(detailsView) detailsView.style.display = 'block';
-        if(reviewView) reviewView.style.display = 'none';
+        if (detailsView) detailsView.style.display = 'block';
+        if (reviewView) reviewView.style.display = 'none';
     });
 }
 
-if(saveButton){
+if (saveButton) {
     saveButton.addEventListener('click', async () => {
         const reviewText = reviewTextarea.value.trim();
         const reviewData = {
@@ -244,13 +259,19 @@ if(saveButton){
         };
         if (reviewText) {
             const { error } = await supabase.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
-            if (error) { alert('리뷰 저장에 실패했습니다: ' + error.message); } 
-            else { alert('리뷰가 저장되었습니다!'); }
+            if (error) {
+                alert('리뷰 저장에 실패했습니다: ' + error.message);
+            } else {
+                alert('리뷰가 저장되었습니다!');
+            }
         } else {
             const { error } = await supabase.from('reviews').delete().match({ movie_id: currentMovieData.id, group_id: GROUP_ID });
-            if (error) { alert('리뷰 삭제에 실패했습니다: ' + error.message); }
-            else { alert('리뷰가 삭제되었습니다.'); }
+            if (error) {
+                alert('리뷰 삭제에 실패했습니다: ' + error.message);
+            } else {
+                alert('리뷰가 삭제되었습니다.');
+            }
         }
-        if(backToDetailsBtn) backToDetailsBtn.click();
+        if (backToDetailsBtn) backToDetailsBtn.click();
     });
 }
