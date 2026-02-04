@@ -1,9 +1,8 @@
 const supabaseUrl = 'https://bmmhrilwjgfbcaefguyx.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtbWhyaWx3amdmYmNhZWZndXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY3NTMsImV4cCI6MjA4NTY3Mjc1M30.KdBImt3wsO5XgZJqaHh1sfnB1rA3sMUbHOxUQ8Qn5Dk'; 
-const { createClient } = supabase; // Supabase 라이브러리에서 createClient 함수를 가져옵니다.
-const supabaseClient = createClient(supabaseUrl, supabaseKey); // 가져온 함수를 사용합니다.
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtbWhyaWx3amdmYmNhZWZndXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY3NTMsImV4cCI6MjA4NTY3Mjc1M30.KdBImt3wsO5XgZJqaHh1sfnB1rA3sMUbHOxUQ8Qn5Dk';
+const { createClient } = supabase;
+const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-// --- 1. 요소 선택 ---
 const searchInput = document.querySelector('.search-input');
 const searchButton = document.querySelector('.search-button');
 const categoryButtons = document.querySelectorAll('.cat-btn');
@@ -25,24 +24,21 @@ const recentSearchesContainer = document.getElementById('recent-searches-contain
 const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
 
-// --- 2. 전역 변수 ---
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
+const GROUP_ID = sessionStorage.getItem('appGroupId');
 let currentCategory = '전체';
 let lastResults = [];
 let currentMovieData = {};
 
-// --- 3. 인증 및 초기화 ---
-(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-        location.href = 'login.html'; // 로그인 안되어 있으면 로그인 페이지로
+document.addEventListener('DOMContentLoaded', () => { 
+    if (!GROUP_ID) {
+        document.body.innerHTML = '';
+        location.href = 'index.html'; // 또는 login.html
         return;
     }
-    displayRecentSearches();
-})();
+    displayRecentSearches(); 
+});
 
-
-// --- 4. 이벤트 리스너 ---
 if (searchButton && searchInput) {
     searchButton.addEventListener('click', () => {
         const searchTerm = searchInput.value.trim();
@@ -51,19 +47,18 @@ if (searchButton && searchInput) {
         fetchMovies(searchTerm);
     });
     searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') { searchButton.click(); }
+        if (event.key === 'Enter' && searchButton) { searchButton.click(); }
     });
 }
 
 if (logoutButton) {
-    logoutButton.addEventListener('click', async () => {
-        await supabase.auth.signOut();
+    logoutButton.addEventListener('click', () => {
+        sessionStorage.clear();
         alert('로그아웃되었습니다.');
         location.href = 'index.html';
     });
 }
 
-// --- 5. API 호출 함수 ---
 async function fetchCredits(mediaType, id) {
     const url = `https://api.themoviedb.org/3/${mediaType}/${id}/credits?api_key=${API_KEY}&language=ko-KR`;
     try {
@@ -99,7 +94,6 @@ async function fetchItemDetails(mediaType, id) {
     } catch (e) { return null; }
 }
 
-// --- 6. 화면 표시 및 필터링 함수 ---
 const filterItem = (item) => {
     const isAnimation = item.genre_ids?.includes(16);
     if (!item.media_type) return false;
@@ -114,9 +108,9 @@ const filterItem = (item) => {
 
 async function displayResults() {
     if (!resultsSection) return;
-    const itemsToDisplay = [];
+    resultsSection.innerHTML = '';
     const displayedMovieIds = new Set();
-    
+    const itemsToDisplay = [];
     lastResults.forEach(item => {
         if (item.media_type === 'person') {
             item.known_for?.forEach(work => {
@@ -125,7 +119,8 @@ async function displayResults() {
                     displayedMovieIds.add(work.id);
                 }
             });
-        } else if ((item.media_type === 'movie' || item.media_type === 'tv') && !displayedMovieIds.has(item.id) && filterItem(item)) {
+        } else if ((item.media_type === 'movie' || item.media_type === 'tv') && !
+                   displayedMovieIds.has(item.id) && filterItem(item)) {
             itemsToDisplay.push(item);
             displayedMovieIds.add(item.id);
         }
@@ -135,7 +130,6 @@ async function displayResults() {
         resultsSection.innerHTML = '<p class="no-results">표시할 결과가 없습니다.</p>';
         return;
     }
-
     const cardPromises = itemsToDisplay.map(item => createCardHTML(item));
     const cardsHTML = (await Promise.all(cardPromises)).join('');
     resultsSection.innerHTML = cardsHTML;
@@ -148,7 +142,6 @@ async function createCardHTML(item) {
     return `<div class="movie-card" data-id="${item.id}" data-type="${item.media_type}"><div class="movie-card-poster"><img src="${posterPath}" alt="${title} 포스터"></div><div class="movie-info"><h3>${title}</h3><div class="credits-info"><span><strong>감독:</strong> ${credits.director}</span><span><strong>출연:</strong> ${credits.cast}</span></div></div></div>`;
 }
 
-// --- 7. 기타 UI 기능 ---
 if (categoryButtons) {
     categoryButtons.forEach(button => {
         button.addEventListener('click', (event) => {
@@ -199,9 +192,7 @@ if (recentSearchesList) {
     });
 }
 
-// --- 8. 모달 기능 ---
 function closeModal() { if (modalOverlay) modalOverlay.classList.remove('visible'); }
-
 if (closeButton) closeButton.addEventListener('click', closeModal);
 if (modalOverlay) modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
 
@@ -236,9 +227,7 @@ if (showReviewViewBtn) {
     showReviewViewBtn.addEventListener('click', async () => {
         const { title, name, id } = currentMovieData;
         if (reviewModalTitle) reviewModalTitle.textContent = `${title || name} - 리뷰`;
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase.from('reviews').select('review_text').match({ movie_id: id, user_id: user.id }).single();
+        const { data } = await supabaseClient.from('reviews').select('review_text').match({ movie_id: id, group_id: GROUP_ID }).single();
         if (reviewTextarea) reviewTextarea.value = data?.review_text || '';
         if (detailsView) detailsView.style.display = 'none';
         if (reviewView) reviewView.style.display = 'block';
@@ -256,17 +245,13 @@ if (saveButton) {
     saveButton.addEventListener('click', async () => {
         const { id, media_type } = currentMovieData;
         const reviewText = reviewTextarea.value.trim();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return alert('세션이 만료되었습니다. 다시 로그인해주세요.');
-
-        const reviewData = { movie_id: id, media_type, review_text: reviewText, user_id: user.id };
-        
+        const reviewData = { movie_id: id, media_type, review_text: reviewText, group_id: GROUP_ID };
         if (reviewText) {
-            const { error } = await supabase.from('reviews').upsert(reviewData, { onConflict: 'movie_id, user_id' });
+            const { error } = await supabaseClient.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
             if (error) alert('리뷰 저장 실패: ' + error.message);
             else alert('리뷰가 저장되었습니다!');
         } else {
-            const { error } = await supabase.from('reviews').delete().match({ movie_id: id, user_id: user.id });
+            const { error } = await supabaseClient.from('reviews').delete().match({ movie_id: id, group_id: GROUP_ID });
             if (error) alert('리뷰 삭제 실패: ' + error.message);
             else alert('리뷰가 삭제되었습니다.');
         }

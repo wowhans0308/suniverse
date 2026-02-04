@@ -1,7 +1,7 @@
 const supabaseUrl = 'https://bmmhrilwjgfbcaefguyx.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtbWhyaWx3amdmYmNhZWZndXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY3NTMsImV4cCI6MjA4NTY3Mjc1M30.KdBImt3wsO5XgZJqaHh1sfnB1rA3sMUbHOxUQ8Qn5Dk'; 
-const { createClient } = supabase; // Supabase 라이브러리에서 createClient 함수를 가져옵니다.
-const supabaseClient = createClient(supabaseUrl, supabaseKey); // 가져온 함수를 사용합니다.
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtbWhyaWx3amdmYmNhZWZndXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY3NTMsImV4cCI6MjA4NTY3Mjc1M30.KdBImt3wsO5XgZJqaHh1sfnB1rA3sMUbHOxUQ8Qn5Dk';
+const { createClient } = supabase;
+const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
 const reviewsListContainer = document.getElementById('my-reviews-list');
@@ -20,20 +20,20 @@ const backToDetailsBtn = document.getElementById('back-to-details-btn');
 const saveButton = document.getElementById('save-button');
 const logoutButton = document.getElementById('logout-button');
 
+const GROUP_ID = sessionStorage.getItem('appGroupId');
 let currentMovieData = {};
 
-(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-        location.href = 'login.html';
+document.addEventListener('DOMContentLoaded', () => {
+    if (!GROUP_ID) {
+        location.href = 'index.html'; // 또는 login.html
         return;
     }
     loadMyReviews();
-})();
+});
 
 if (logoutButton) {
-    logoutButton.addEventListener('click', async () => {
-        await supabase.auth.signOut();
+    logoutButton.addEventListener('click', () => {
+        sessionStorage.clear();
         alert('로그아웃되었습니다.');
         location.href = 'index.html';
     });
@@ -43,13 +43,7 @@ async function loadMyReviews() {
     if(!reviewsListContainer) return;
     reviewsListContainer.innerHTML = '<p class="loading">리뷰를 불러오는 중...</p>';
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        reviewsListContainer.innerHTML = '<p class="no-results">로그인 정보가 없습니다.</p>';
-        return;
-    }
-    
-    const { data: reviews, error } = await supabase.from('reviews').select('*').eq('user_id', user.id);
+    const { data: reviews, error } = await supabaseClient.from('reviews').select('*').eq('group_id', GROUP_ID);
 
     if (error) {
         reviewsListContainer.innerHTML = `<p class="no-results">리뷰를 불러오는 데 실패했습니다.</p>`;
@@ -98,9 +92,7 @@ if (reviewsListContainer) {
             currentMovieData = { ...details, media_type: mediaType };
 
             if(reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            const { data } = await supabase.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, user_id: user.id }).single();
+            const { data } = await supabaseClient.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, group_id: GROUP_ID }).single();
             if(reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
             
             if(detailsView) detailsView.style.display = 'none';
@@ -120,16 +112,18 @@ if(saveButton){
     saveButton.addEventListener('click', async () => {
         const { id, media_type } = currentMovieData;
         const reviewText = reviewTextarea.value.trim();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return alert('세션이 만료되었습니다. 다시 로그인해주세요.');
-
-        const reviewData = { movie_id: id, media_type, review_text: reviewText, user_id: user.id };
+        const reviewData = { 
+            movie_id: id, 
+            media_type,
+            review_text: reviewText, 
+            group_id: GROUP_ID
+        };
         if (reviewText) {
-            const { error } = await supabase.from('reviews').upsert(reviewData, { onConflict: 'movie_id, user_id' });
+            const { error } = await supabaseClient.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
             if (error) { alert('리뷰 수정에 실패했습니다: ' + error.message); }
             else { alert('리뷰가 수정되었습니다!'); }
         } else {
-            const { error } = await supabase.from('reviews').delete().match({ movie_id: id, user_id: user.id });
+            const { error } = await supabaseClient.from('reviews').delete().match({ movie_id: id, group_id: GROUP_ID });
             if (error) { alert('리뷰 삭제에 실패했습니다: ' + error.message); }
             else { alert('리뷰가 삭제되었습니다.'); }
         }
