@@ -1,6 +1,7 @@
-const supabaseUrl = 'YOUR_SUPABASE_URL';
-const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = 'https://bmmhrilwjgfbcaefguyx.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtbWhyaWx3amdmYmNhZWZndXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwOTY3NTMsImV4cCI6MjA4NTY3Mjc1M30.KdBImt3wsO5XgZJqaHh1sfnB1rA3sMUbHOxUQ8Qn5Dk'; 
+const { createClient } = supabase; // Supabase 라이브러리에서 createClient 함수를 가져옵니다.
+const supabaseClient = createClient(supabaseUrl, supabaseKey); // 가져온 함수를 사용합니다.
 
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
 const reviewsListContainer = document.getElementById('my-reviews-list');
@@ -19,26 +20,36 @@ const backToDetailsBtn = document.getElementById('back-to-details-btn');
 const saveButton = document.getElementById('save-button');
 const logoutButton = document.getElementById('logout-button');
 
-const GROUP_ID = sessionStorage.getItem('appGroupId') || 'unknown_group';
 let currentMovieData = {};
 
-document.addEventListener('DOMContentLoaded', () => {
+(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        location.href = 'login.html';
+        return;
+    }
     loadMyReviews();
-});
+})();
 
 if (logoutButton) {
-    logoutButton.addEventListener('click', () => {
-        sessionStorage.clear();
+    logoutButton.addEventListener('click', async () => {
+        await supabase.auth.signOut();
         alert('로그아웃되었습니다.');
         location.href = 'index.html';
     });
 }
 
 async function loadMyReviews() {
-    if (!reviewsListContainer) return;
+    if(!reviewsListContainer) return;
     reviewsListContainer.innerHTML = '<p class="loading">리뷰를 불러오는 중...</p>';
-
-    const { data: reviews, error } = await supabase.from('reviews').select('*').eq('group_id', GROUP_ID);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        reviewsListContainer.innerHTML = '<p class="no-results">로그인 정보가 없습니다.</p>';
+        return;
+    }
+    
+    const { data: reviews, error } = await supabase.from('reviews').select('*').eq('user_id', user.id);
 
     if (error) {
         reviewsListContainer.innerHTML = `<p class="no-results">리뷰를 불러오는 데 실패했습니다.</p>`;
@@ -48,7 +59,7 @@ async function loadMyReviews() {
         reviewsListContainer.innerHTML = '<p class="no-results">아직 작성한 리뷰가 없습니다.</p>';
         return;
     }
-
+    
     const reviewItems = [];
     await Promise.all(reviews.map(async (review) => {
         const itemDetails = await fetchItemDetails(review.media_type, review.movie_id);
@@ -57,9 +68,9 @@ async function loadMyReviews() {
             reviewItems.push(itemDetails);
         }
     }));
-
+    
     reviewItems.sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name));
-
+    
     const cardPromises = reviewItems.map(item => createCardHTML(item));
     const cards = await Promise.all(cardPromises);
     reviewsListContainer.innerHTML = cards.join('');
@@ -72,13 +83,9 @@ async function createCardHTML(item) {
     return `<div class="movie-card my-review-version" data-id="${item.id}" data-type="${item.media_type}"><div class="movie-card-poster"><img src="${posterPath}" alt="${title} 포스터"></div><div class="movie-info"><h3>${title}</h3><div class="credits-info"><span><strong>감독:</strong> ${credits.director}</span><span><strong>출연:</strong> ${credits.cast}</span></div></div></div>`;
 }
 
-function closeModal() {
-    if (modalOverlay) modalOverlay.classList.remove('visible');
-}
+function closeModal() { if (modalOverlay) modalOverlay.classList.remove('visible'); }
 if (closeButton) closeButton.addEventListener('click', closeModal);
-if (modalOverlay) modalOverlay.addEventListener('click', (event) => {
-    if (event.target === modalOverlay) closeModal();
-});
+if (modalOverlay) modalOverlay.addEventListener('click', (event) => { if (event.target === modalOverlay) closeModal(); });
 
 if (reviewsListContainer) {
     reviewsListContainer.addEventListener('click', async (event) => {
@@ -87,16 +94,13 @@ if (reviewsListContainer) {
             const movieId = card.dataset.id;
             const mediaType = card.dataset.type;
             const details = await fetchItemDetails(mediaType, movieId);
-            if (!details) {
-                alert('상세 정보를 불러오는 데 실패했습니다.');
-                return;
-            }
-            currentMovieData = details;
-            currentMovieData.media_type = mediaType;
-            
-            // My Reviews에서는 바로 리뷰 뷰를 보여줍니다.
+            if (!details) { alert('상세 정보를 불러오는 데 실패했습니다.'); return; }
+            currentMovieData = { ...details, media_type: mediaType };
+
             if(reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
-            const { data } = await supabase.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, group_id: GROUP_ID }).single();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, user_id: user.id }).single();
             if(reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
             
             if(detailsView) detailsView.style.display = 'none';
@@ -114,19 +118,18 @@ if(backToDetailsBtn) {
 
 if(saveButton){
     saveButton.addEventListener('click', async () => {
+        const { id, media_type } = currentMovieData;
         const reviewText = reviewTextarea.value.trim();
-        const reviewData = { 
-            movie_id: currentMovieData.id, 
-            media_type: currentMovieData.media_type,
-            review_text: reviewText, 
-            group_id: GROUP_ID
-        };
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+
+        const reviewData = { movie_id: id, media_type, review_text: reviewText, user_id: user.id };
         if (reviewText) {
-            const { error } = await supabase.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
+            const { error } = await supabase.from('reviews').upsert(reviewData, { onConflict: 'movie_id, user_id' });
             if (error) { alert('리뷰 수정에 실패했습니다: ' + error.message); }
             else { alert('리뷰가 수정되었습니다!'); }
         } else {
-            const { error } = await supabase.from('reviews').delete().match({ movie_id: currentMovieData.id, group_id: GROUP_ID });
+            const { error } = await supabase.from('reviews').delete().match({ movie_id: id, user_id: user.id });
             if (error) { alert('리뷰 삭제에 실패했습니다: ' + error.message); }
             else { alert('리뷰가 삭제되었습니다.'); }
         }
@@ -145,10 +148,7 @@ async function fetchCredits(mediaType, id) {
         const director = data.crew.find(person => person.job === 'Director');
         const cast = data.cast.slice(0, 5).map(person => person.name).join(', ');
         return { director: creator || (director ? director.name : '정보 없음'), cast: cast || '정보 없음' };
-    } catch (error) {
-        console.error('Credits 정보 로딩 에러:', error);
-        return { director: '정보 없음', cast: '정보 없음' };
-    }
+    } catch (error) { return { director: '정보 없음', cast: '정보 없음' }; }
 }
 async function fetchItemDetails(mediaType, id) {
     const url = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${API_KEY}&language=ko-KR`;
@@ -156,8 +156,5 @@ async function fetchItemDetails(mediaType, id) {
         const response = await fetch(url);
         if (!response.ok) return null;
         return await response.json();
-    } catch (error) {
-        console.error('상세 정보 로딩 에러:', error);
-        return null;
-    }
+    } catch (error) { return null; }
 }
