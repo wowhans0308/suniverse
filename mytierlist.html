@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Reviews - Suniverse</title>
+    <title>My Tier Lists - Suniverse</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -22,7 +22,7 @@
                 <span class="material-symbols-outlined">hub</span>
                 Portal
             </a>
-            <h1>My Reviews</h1>
+            <h1>My Tier Lists</h1>
             <div class="header-right-buttons">
                 <a href="ocn.html" class="icon-button home-link">
                     <span class="material-symbols-outlined">arrow_back</span>
@@ -39,7 +39,16 @@
             <button class="tab-btn" data-type="books">📚 Books</button>
         </div>
 
-        <main class="results-section" id="my-reviews-list"></main>
+        <div class="tierlist-container" id="tierlist-container">
+            <div class="tierlist-column" id="tier-column-me">
+                <h2>내 티어</h2>
+                <div class="tier-content" id="tier-content-me"></div>
+            </div>
+            <div class="tierlist-column" id="tier-column-partner">
+                <h2>상대 티어</h2>
+                <div class="tier-content" id="tier-content-partner"></div>
+            </div>
+        </div>
     </div>
 
     <div class="modal-overlay">
@@ -99,7 +108,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="auth.js" defer></script>
-    <script src="mypage.js" defer></script>
+    <script src="mytierlist.js" defer></script>
 </body>
 
 </html>

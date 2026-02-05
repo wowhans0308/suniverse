@@ -22,9 +22,10 @@ const saveButton = document.getElementById('save-button');
 const recentSearchesContainer = document.getElementById('recent-searches-container');
 const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
+const tierMeSelect = document.getElementById('tier-me');
+const tierPartnerSelect = document.getElementById('tier-partner');
 
 const GROUP_ID = sessionStorage.getItem('appGroupId');
-// Use relative path for the proxy API
 const PROXY_URL = 'https://suniverse-api-ew8y.vercel.app/api/books';
 let lastResults = [];
 let currentBookData = {};
@@ -62,27 +63,20 @@ async function fetchBooks(query) {
     if (resultsSection) resultsSection.innerHTML = '<p class="loading">검색 중...</p>';
 
     try {
-        // Construct standard URL for proxy
-        const url = `${PROXY_URL}?query=${encodeURIComponent(query)}&display=20`;
-        console.log('Fetching:', url);
-
+        const url = PROXY_URL + '?query=' + encodeURIComponent(query) + '&display=20';
         const response = await fetch(url);
 
         if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`API Error ${response.status}: ${errText}`);
+            throw new Error('API Error ' + response.status);
         }
 
         const data = await response.json();
-        console.log('API Response:', data);
-
-        // Naver API returns 'items' array. Handle possible empty/undefined cases.
         lastResults = data.items || [];
-        displayResults();
+        await displayResults();
     } catch (e) {
         console.error('Fetch error:', e);
         if (resultsSection) {
-            resultsSection.innerHTML = `<p class="no-results">오류가 발생했습니다: ${e.message}</p>`;
+            resultsSection.innerHTML = '<p class="no-results">오류가 발생했습니다: ' + e.message + '</p>';
         }
     }
 }
@@ -99,8 +93,38 @@ async function displayResults() {
     const cardsHTML = lastResults.map(book => createCardHTML(book)).join('');
     resultsSection.innerHTML = cardsHTML;
     
-    // 위시리스트에 있는 항목 표시
     await markWishlistedItems();
+}
+
+function stripHtml(html) {
+    if (!html) return '';
+    let tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+}
+
+function createCardHTML(book) {
+    const title = stripHtml(book.title);
+    const image = book.image || 'https://placehold.co/150x220?text=No+Image';
+    const author = stripHtml(book.author);
+    const publisher = stripHtml(book.publisher);
+    const bookId = book.isbn.split(' ')[0];
+
+    return '<div class="movie-card" data-isbn="' + bookId + '">' +
+        '<div class="movie-card-poster">' +
+        '<img src="' + image + '" alt="' + title + ' 표지">' +
+        '<button class="wishlist-btn" data-id="' + bookId + '" data-type="book" title="위시리스트에 추가">' +
+        '<span class="material-symbols-outlined">favorite</span>' +
+        '</button>' +
+        '</div>' +
+        '<div class="movie-info">' +
+        '<h3>' + title + '</h3>' +
+        '<div class="credits-info">' +
+        '<span><strong>저자:</strong> ' + author + '</span>' +
+        '<span><strong>출판사:</strong> ' + publisher + '</span>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
 }
 
 async function markWishlistedItems() {
@@ -122,7 +146,6 @@ async function handleWishlistClick(btn) {
     const contentId = btn.dataset.id;
     const mediaType = btn.dataset.type;
     
-    // lastResults에서 해당 책 찾기
     const book = lastResults.find(b => b.isbn.split(' ')[0] === contentId);
     
     if (!book) return;
@@ -130,7 +153,6 @@ async function handleWishlistClick(btn) {
     const title = stripHtml(book.title);
     const image = book.image || '';
     
-// 이미 위시리스트에 있는지 확인
     const { data: existingList } = await supabaseClient
         .from('wishlists')
         .select('id')
@@ -140,7 +162,6 @@ async function handleWishlistClick(btn) {
     const existing = existingList && existingList.length > 0 ? existingList[0] : null;
     
     if (existing) {
-        // 위시리스트에서 제거
         await supabaseClient
             .from('wishlists')
             .delete()
@@ -149,7 +170,6 @@ async function handleWishlistClick(btn) {
         btn.classList.remove('active');
         alert('위시리스트에서 제거되었습니다.');
     } else {
-        // 위시리스트에 추가
         await supabaseClient
             .from('wishlists')
             .insert({
@@ -163,40 +183,6 @@ async function handleWishlistClick(btn) {
         btn.classList.add('active');
         alert('위시리스트에 추가되었습니다!');
     }
-}
-
-function stripHtml(html) {
-    let tmp = document.createElement("DIV");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
-}
-
-function createCardHTML(book) {
-    const title = stripHtml(book.title);
-    const image = book.image || 'https://placehold.co/150x220?text=No+Image';
-    const author = stripHtml(book.author);
-    const publisher = stripHtml(book.publisher);
-
-    // Use isbn as unique ID
-    const bookId = book.isbn.split(' ')[0];
-
-    return `
-        <div class="movie-card" data-isbn="${bookId}">
-            <div class="movie-card-poster">
-                <img src="${image}" alt="${title} 표지">
-                <button class="wishlist-btn" data-id="${bookId}" data-type="book" title="위시리스트에 추가">
-                    <span class="material-symbols-outlined">favorite</span>
-                </button>
-            </div>
-            <div class="movie-info">
-                <h3>${title}</h3>
-                <div class="credits-info">
-                    <span><strong>저자:</strong> ${author}</span>
-                    <span><strong>출판사:</strong> ${publisher}</span>
-                </div>
-            </div>
-        </div>
-    `;
 }
 
 function saveRecentSearch(term) {
@@ -213,7 +199,7 @@ function displayRecentSearches() {
     try {
         const searches = JSON.parse(localStorage.getItem('recentBookSearches')) || [];
         if (searches.length > 0) {
-            recentSearchesList.innerHTML = searches.map(term => `<span class="recent-search-item"><span>${term}</span><button class="delete-search-btn" data-term="${term}">&times;</button></span>`).join('');
+            recentSearchesList.innerHTML = searches.map(term => '<span class="recent-search-item"><span>' + term + '</span><button class="delete-search-btn" data-term="' + term + '">&times;</button></span>').join('');
             recentSearchesContainer.style.display = 'block';
         } else {
             recentSearchesContainer.style.display = 'none';
@@ -244,7 +230,6 @@ if (modalOverlay) modalOverlay.addEventListener('click', (e) => { if (e.target =
 
 if (resultsSection) {
     resultsSection.addEventListener('click', async (event) => {
-        // 하트 버튼 클릭 처리
         const wishlistBtn = event.target.closest('.wishlist-btn');
         if (wishlistBtn) {
             event.stopPropagation();
@@ -252,7 +237,6 @@ if (resultsSection) {
             return;
         }
         
-        // 카드 클릭 처리 (모달 열기)
         const card = event.target.closest('.movie-card');
         if (card) {
             const bookId = card.dataset.isbn;
@@ -275,7 +259,7 @@ function displayDetailsView() {
 
     if (modalPoster) modalPoster.src = image;
     if (modalTitle) modalTitle.textContent = title;
-    if (modalCredits) modalCredits.innerHTML = `<p><strong>저자:</strong> ${author}</p><p><strong>출판사:</strong> ${publisher}</p>`;
+    if (modalCredits) modalCredits.innerHTML = '<p><strong>저자:</strong> ' + author + '</p><p><strong>출판사:</strong> ' + publisher + '</p>';
     if (modalOverview) modalOverview.textContent = description;
     if (detailsView) detailsView.style.display = 'block';
     if (reviewView) reviewView.style.display = 'none';
@@ -284,21 +268,23 @@ function displayDetailsView() {
 if (showReviewViewBtn) {
     showReviewViewBtn.addEventListener('click', async () => {
         const title = stripHtml(currentBookData.title);
-        // Use first part of ISBN as stored ID
         const bookId = currentBookData.isbn.split(' ')[0];
 
-        if (reviewModalTitle) reviewModalTitle.textContent = `${title} - 리뷰`;
+        if (reviewModalTitle) reviewModalTitle.textContent = title + ' - 리뷰';
 
-        const { data } = await supabaseClient.from('reviews')
-            .select('review_text')
-            .match({ movie_id: bookId, group_id: GROUP_ID }) // Using movie_id column for book ID to reuse table
-            .single();
+        const { data } = await supabaseClient
+            .from('reviews')
+            .select('review_text, tier_me, tier_partner')
+            .eq('movie_id', bookId)
+            .eq('group_id', GROUP_ID);
 
-        if (reviewTextarea) {
-            reviewTextarea.value = data?.review_text || '';
-            reviewTextarea.focus();
-        }
+        const review = data && data.length > 0 ? data[0] : null;
 
+        if (reviewTextarea) reviewTextarea.value = review?.review_text || '';
+        if (tierMeSelect) tierMeSelect.value = review?.tier_me || '';
+        if (tierPartnerSelect) tierPartnerSelect.value = review?.tier_partner || '';
+
+        if (reviewTextarea) reviewTextarea.focus();
         if (detailsView) detailsView.style.display = 'none';
         if (reviewView) reviewView.style.display = 'block';
     });
@@ -317,6 +303,8 @@ if (saveButton) {
         const reviewText = reviewTextarea.value.trim();
         const bookTitle = stripHtml(currentBookData.title);
         const bookImage = currentBookData.image || '';
+        const tierMe = tierMeSelect ? tierMeSelect.value : null;
+        const tierPartner = tierPartnerSelect ? tierPartnerSelect.value : null;
         
         const reviewData = {
             movie_id: bookId,
@@ -324,28 +312,31 @@ if (saveButton) {
             review_text: reviewText,
             group_id: GROUP_ID,
             content_title: bookTitle,
-            content_image: bookImage
+            content_image: bookImage,
+            tier_me: tierMe || null,
+            tier_partner: tierPartner || null
         };
 
-        if (reviewText) {
-            const { error } = await supabaseClient.from('reviews')
+        if (reviewText || tierMe || tierPartner) {
+            const { error } = await supabaseClient
+                .from('reviews')
                 .upsert(reviewData, { onConflict: 'movie_id, group_id' });
 
             if (error) alert('리뷰 저장 실패: ' + error.message);
-            else alert('리뷰가 저장되었습니다!');
+            else alert('저장되었습니다!');
         } else {
-            const { error } = await supabaseClient.from('reviews')
+            const { error } = await supabaseClient
+                .from('reviews')
                 .delete()
                 .match({ movie_id: bookId, group_id: GROUP_ID });
 
-            if (error) alert('리뷰 삭제 실패: ' + error.message);
-            else alert('리뷰가 삭제되었습니다.');
+            if (error) alert('삭제 실패: ' + error.message);
+            else alert('삭제되었습니다.');
         }
         if (backToDetailsBtn) backToDetailsBtn.click();
     });
 }
 
-// Global ESC key to close modal (Issue 1)
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
         if (modalOverlay && modalOverlay.classList.contains('visible')) {
@@ -354,16 +345,14 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// Keyboard shortcuts for review textarea
 if (reviewTextarea) {
     reviewTextarea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
+            e.preventDefault
             if (saveButton) saveButton.click();
         } else if (e.key === 'Escape') {
             e.preventDefault();
             if (backToDetailsBtn) backToDetailsBtn.click();
-            else closeModal();
         }
     });
 }

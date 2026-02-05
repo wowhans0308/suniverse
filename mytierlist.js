@@ -4,8 +4,10 @@ const { createClient } = supabase;
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
+const TIERS = ['S', 'A+', 'A', 'B', 'C', 'D', 'F'];
 
-let wishlistContainer;
+let tierContentMe;
+let tierContentPartner;
 let logoutButton;
 let tabButtons;
 let backLink;
@@ -30,9 +32,11 @@ const urlParams = new URLSearchParams(window.location.search);
 const source = urlParams.get('source') || 'ocn';
 let currentTab = source;
 let currentItemData = {};
+let allReviews = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    wishlistContainer = document.getElementById('wishlist-container');
+    tierContentMe = document.getElementById('tier-content-me');
+    tierContentPartner = document.getElementById('tier-content-partner');
     logoutButton = document.getElementById('logout-button');
     tabButtons = document.querySelectorAll('.tab-btn');
     backLink = document.querySelector('.home-link');
@@ -69,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             currentTab = btn.dataset.type;
             updateBackLink();
-            loadWishlists();
+            loadTierLists();
         });
     });
 
@@ -149,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .from('reviews')
                     .upsert(reviewData, { onConflict: 'movie_id, group_id' });
 
-                if (error) alert('리뷰 저장 실패: ' + error.message);
+                if (error) alert('저장 실패: ' + error.message);
                 else alert('저장되었습니다!');
             } else {
                 const { error } = await supabaseClient
@@ -157,11 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     .delete()
                     .match({ movie_id: id, group_id: GROUP_ID });
 
-                if (error) alert('리뷰 삭제 실패: ' + error.message);
+                if (error) alert('삭제 실패: ' + error.message);
                 else alert('삭제되었습니다.');
             }
 
-            if (backToDetailsBtn) backToDetailsBtn.click();
+            closeModal();
+            loadTierLists();
         });
     }
 
@@ -177,68 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (wishlistContainer) {
-        wishlistContainer.addEventListener('click', async (event) => {
-            const wishlistBtn = event.target.closest('.wishlist-btn');
-            if (wishlistBtn) {
-                event.stopPropagation();
-                const contentId = wishlistBtn.dataset.id;
-
-                const { error } = await supabaseClient
-                    .from('wishlists')
-                    .delete()
-                    .match({ content_id: contentId, group_id: GROUP_ID });
-
-                if (error) {
-                    alert('제거 실패: ' + error.message);
-                } else {
-                    alert('위시리스트에서 제거되었습니다.');
-                    loadWishlists();
-                }
-                return;
-            }
-
-            const card = event.target.closest('.movie-card');
-            if (card) {
-                const contentId = card.dataset.id;
-                const mediaType = card.dataset.type;
-
-                const { data: wishlistItems } = await supabaseClient
-                    .from('wishlists')
-                    .select('*')
-                    .eq('content_id', contentId)
-                    .eq('group_id', GROUP_ID);
-
-                const wishlistItem = wishlistItems && wishlistItems.length > 0 ? wishlistItems[0] : null;
-
-                if (!wishlistItem) {
-                    alert('상세 정보를 불러오는 데 실패했습니다.');
-                    return;
-                }
-
-                currentItemData = {
-                    id: contentId,
-                    media_type: mediaType,
-                    title: wishlistItem.content_title,
-                    image: wishlistItem.content_image
-                };
-
-                if (mediaType === 'movie' || mediaType === 'tv') {
-                    const details = await fetchItemDetails(mediaType, contentId);
-                    if (details) {
-                        currentItemData.overview = details.overview;
-                        currentItemData.credits = await fetchCredits(mediaType, contentId);
-                    }
-                }
-
-                displayDetailsView();
-                if (modalOverlay) modalOverlay.classList.add('visible');
-            }
-        });
-    }
-
     updateBackLink();
-    loadWishlists();
+    loadTierLists();
 });
 
 function updateBackLink() {
@@ -248,11 +193,13 @@ function updateBackLink() {
     }
 }
 
-async function loadWishlists() {
-    if (!wishlistContainer) return;
-    wishlistContainer.innerHTML = '<p class="loading">위시리스트를 불러오는 중...</p>';
+async function loadTierLists() {
+    if (!tierContentMe || !tierContentPartner) return;
+    
+    tierContentMe.innerHTML = '<p class="loading">불러오는 중...</p>';
+    tierContentPartner.innerHTML = '<p class="loading">불러오는 중...</p>';
 
-    let query = supabaseClient.from('wishlists').select('*').eq('group_id', GROUP_ID);
+    let query = supabaseClient.from('reviews').select('*').eq('group_id', GROUP_ID);
 
     if (currentTab === 'ocn') {
         query = query.in('media_type', ['movie', 'tv']);
@@ -260,39 +207,93 @@ async function loadWishlists() {
         query = query.eq('media_type', 'book');
     }
 
-    const { data: wishlists, error } = await query;
+    const { data: reviews, error } = await query;
 
     if (error) {
-        wishlistContainer.innerHTML = '<p class="no-results">위시리스트를 불러오는 데 실패했습니다.</p>';
+        tierContentMe.innerHTML = '<p class="no-results">불러오기 실패</p>';
+        tierContentPartner.innerHTML = '<p class="no-results">불러오기 실패</p>';
         return;
     }
 
-    if (!wishlists || wishlists.length === 0) {
-        wishlistContainer.innerHTML = '<p class="no-results">위시리스트가 비어있습니다.</p>';
-        return;
-    }
+    allReviews = reviews || [];
 
-    wishlists.sort((a, b) => (a.content_title || '').localeCompare(b.content_title || ''));
+    const reviewsWithTierMe = allReviews.filter(r => r.tier_me);
+    const reviewsWithTierPartner = allReviews.filter(r => r.tier_partner);
 
-    const cardsHTML = wishlists.map(item => createWishlistCardHTML(item)).join('');
-    wishlistContainer.innerHTML = cardsHTML;
+    renderTierColumn(tierContentMe, reviewsWithTierMe, 'tier_me');
+    renderTierColumn(tierContentPartner, reviewsWithTierPartner, 'tier_partner');
+
+    addCardClickListeners();
 }
 
-function createWishlistCardHTML(item) {
-    const title = item.content_title || '제목 없음';
-    const image = item.content_image || 'https://placehold.co/150x220?text=No+Image';
+function renderTierColumn(container, reviews, tierField) {
+    if (reviews.length === 0) {
+        container.innerHTML = '<p class="no-results">티어가 지정된 항목이 없습니다.</p>';
+        return;
+    }
 
-    return '<div class="movie-card" data-id="' + item.content_id + '" data-type="' + item.media_type + '">' +
-        '<div class="movie-card-poster">' +
+    let html = '';
+
+    TIERS.forEach(tier => {
+        const tierReviews = reviews.filter(r => r[tierField] === tier);
+        if (tierReviews.length > 0) {
+            const tierClass = tier === 'A+' ? 'tier-A-plus' : 'tier-' + tier;
+            html += '<div class="tier-group">';
+            html += '<div class="tier-header ' + tierClass + '">' + tier + '</div>';
+            html += '<div class="tier-items">';
+            tierReviews.forEach(review => {
+                html += createTierItemHTML(review);
+            });
+            html += '</div>';
+            html += '</div>';
+        }
+    });
+
+    container.innerHTML = html;
+}
+
+function createTierItemHTML(review) {
+    const title = review.content_title || '제목 없음';
+    const image = review.content_image || 'https://placehold.co/60x90?text=No';
+
+    return '<div class="tier-item" data-id="' + review.movie_id + '" data-type="' + review.media_type + '">' +
         '<img src="' + image + '" alt="' + title + '">' +
-        '<button class="wishlist-btn active" data-id="' + item.content_id + '" title="위시리스트에서 제거">' +
-        '<span class="material-symbols-outlined">favorite</span>' +
-        '</button>' +
-        '</div>' +
-        '<div class="movie-info">' +
-        '<h3>' + title + '</h3>' +
-        '</div>' +
+        '<div class="title">' + title + '</div>' +
         '</div>';
+}
+
+function addCardClickListeners() {
+    document.querySelectorAll('.tier-item').forEach(item => {
+        item.addEventListener('click', async () => {
+            const movieId = item.dataset.id;
+            const mediaType = item.dataset.type;
+
+            const review = allReviews.find(r => r.movie_id === movieId);
+
+            if (!review) {
+                alert('데이터를 찾을 수 없습니다.');
+                return;
+            }
+
+            currentItemData = {
+                id: movieId,
+                media_type: mediaType,
+                title: review.content_title,
+                image: review.content_image
+            };
+
+            if (mediaType === 'movie' || mediaType === 'tv') {
+                const details = await fetchItemDetails(mediaType, movieId);
+                if (details) {
+                    currentItemData.overview = details.overview;
+                    currentItemData.credits = await fetchCredits(mediaType, movieId);
+                }
+            }
+
+            displayDetailsView();
+            if (modalOverlay) modalOverlay.classList.add('visible');
+        });
+    });
 }
 
 function closeModal() {

@@ -23,6 +23,8 @@ const saveButton = document.getElementById('save-button');
 const recentSearchesContainer = document.getElementById('recent-searches-container');
 const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
+const tierMeSelect = document.getElementById('tier-me');
+const tierPartnerSelect = document.getElementById('tier-partner');
 
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
 const GROUP_ID = sessionStorage.getItem('appGroupId');
@@ -33,7 +35,7 @@ let currentMovieData = {};
 document.addEventListener('DOMContentLoaded', () => {
     if (!GROUP_ID) {
         document.body.innerHTML = '';
-        location.href = 'index.html'; // 또는 login.html
+        location.href = 'index.html';
         return;
     }
     displayRecentSearches();
@@ -60,7 +62,7 @@ if (logoutButton) {
 }
 
 async function fetchCredits(mediaType, id) {
-    const url = `https://api.themoviedb.org/3/${mediaType}/${id}/credits?api_key=${API_KEY}&language=ko-KR`;
+    const url = 'https://api.themoviedb.org/3/' + mediaType + '/' + id + '/credits?api_key=' + API_KEY + '&language=ko-KR';
     try {
         const response = await fetch(url);
         if (!response.ok) return { director: '정보 없음', cast: '정보 없음' };
@@ -74,7 +76,7 @@ async function fetchCredits(mediaType, id) {
 async function fetchMovies(query) {
     if (recentSearchesContainer) recentSearchesContainer.style.display = 'none';
     if (resultsSection) resultsSection.innerHTML = '<p class="loading">검색 중...</p>';
-    const url = `https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&language=ko-KR&query=${query}`;
+    const url = 'https://api.themoviedb.org/3/search/multi?api_key=' + API_KEY + '&language=ko-KR&query=' + query;
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error('API 요청 실패');
@@ -87,7 +89,7 @@ async function fetchMovies(query) {
 }
 
 async function fetchItemDetails(mediaType, id) {
-    const url = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${API_KEY}&language=ko-KR`;
+    const url = 'https://api.themoviedb.org/3/' + mediaType + '/' + id + '?api_key=' + API_KEY + '&language=ko-KR';
     try {
         const response = await fetch(url);
         return response.ok ? response.json() : null;
@@ -119,8 +121,7 @@ async function displayResults() {
                     displayedMovieIds.add(work.id);
                 }
             });
-        } else if ((item.media_type === 'movie' || item.media_type === 'tv') && !
-            displayedMovieIds.has(item.id) && filterItem(item)) {
+        } else if ((item.media_type === 'movie' || item.media_type === 'tv') && !displayedMovieIds.has(item.id) && filterItem(item)) {
             itemsToDisplay.push(item);
             displayedMovieIds.add(item.id);
         }
@@ -134,9 +135,30 @@ async function displayResults() {
     const cardsHTML = (await Promise.all(cardPromises)).join('');
     resultsSection.innerHTML = cardsHTML;
     
-    // 위시리스트에 있는 항목 표시
     await markWishlistedItems();
 }
+
+async function createCardHTML(item) {
+    const credits = await fetchCredits(item.media_type, item.id);
+    const title = item.title || item.name;
+    const posterPath = item.poster_path ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : 'https://placehold.co/500x750?text=No+Image';
+    return '<div class="movie-card" data-id="' + item.id + '" data-type="' + item.media_type + '">' +
+        '<div class="movie-card-poster">' +
+        '<img src="' + posterPath + '" alt="' + title + ' 포스터">' +
+        '<button class="wishlist-btn" data-id="' + item.id + '" data-type="' + item.media_type + '" title="위시리스트에 추가">' +
+        '<span class="material-symbols-outlined">favorite</span>' +
+        '</button>' +
+        '</div>' +
+        '<div class="movie-info">' +
+        '<h3>' + title + '</h3>' +
+        '<div class="credits-info">' +
+        '<span><strong>감독:</strong> ' + credits.director + '</span>' +
+        '<span><strong>출연:</strong> ' + credits.cast + '</span>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+}
+
 async function markWishlistedItems() {
     const { data: wishlists } = await supabaseClient
         .from('wishlists')
@@ -151,11 +173,11 @@ async function markWishlistedItems() {
         }
     });
 }
+
 async function handleWishlistClick(btn) {
     const contentId = btn.dataset.id;
     const mediaType = btn.dataset.type;
     
-    // lastResults에서 해당 항목 찾기
     let content = null;
     for (const item of lastResults) {
         if (item.id?.toString() === contentId) {
@@ -174,9 +196,8 @@ async function handleWishlistClick(btn) {
     if (!content) return;
     
     const title = content.title || content.name;
-    const image = content.poster_path ? `https://image.tmdb.org/t/p/w500${content.poster_path}` : '';
+    const image = content.poster_path ? 'https://image.tmdb.org/t/p/w500' + content.poster_path : '';
     
-    // 이미 위시리스트에 있는지 확인
     const { data: existingList } = await supabaseClient
         .from('wishlists')
         .select('id')
@@ -186,7 +207,6 @@ async function handleWishlistClick(btn) {
     const existing = existingList && existingList.length > 0 ? existingList[0] : null;
     
     if (existing) {
-        // 위시리스트에서 제거
         await supabaseClient
             .from('wishlists')
             .delete()
@@ -195,7 +215,6 @@ async function handleWishlistClick(btn) {
         btn.classList.remove('active');
         alert('위시리스트에서 제거되었습니다.');
     } else {
-        // 위시리스트에 추가
         await supabaseClient
             .from('wishlists')
             .insert({
@@ -209,30 +228,6 @@ async function handleWishlistClick(btn) {
         btn.classList.add('active');
         alert('위시리스트에 추가되었습니다!');
     }
-}
-
-async function createCardHTML(item) {
-    const credits = await fetchCredits(item.media_type, item.id);
-    const title = item.title || item.name;
-    const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://placehold.co/500x750?text=No+Image'
-;
-    return `
-        <div class="movie-card" data-id="${item.id}" data-type="${item.media_type}">
-            <div class="movie-card-poster">
-                <img src="${posterPath}" alt="${title} 포스터">
-                <button class="wishlist-btn" data-id="${item.id}" data-type="${item.media_type}" title="위시리스트에 추가">
-                    <span class="material-symbols-outlined">favorite</span>
-                </button>
-            </div>
-            <div class="movie-info">
-                <h3>${title}</h3>
-                <div class="credits-info">
-                    <span><strong>감독:</strong> ${credits.director}</span>
-                    <span><strong>출연:</strong> ${credits.cast}</span>
-                </div>
-            </div>
-        </div>
-    `;
 }
 
 if (categoryButtons) {
@@ -260,7 +255,7 @@ function displayRecentSearches() {
     try {
         const searches = JSON.parse(localStorage.getItem('recentSearches')) || [];
         if (searches.length > 0) {
-            recentSearchesList.innerHTML = searches.map(term => `<span class="recent-search-item"><span>${term}</span><button class="delete-search-btn" data-term="${term}">&times;</button></span>`).join('');
+            recentSearchesList.innerHTML = searches.map(term => '<span class="recent-search-item"><span>' + term + '</span><button class="delete-search-btn" data-term="' + term + '">&times;</button></span>').join('');
             recentSearchesContainer.style.display = 'block';
         } else {
             recentSearchesContainer.style.display = 'none';
@@ -291,7 +286,6 @@ if (modalOverlay) modalOverlay.addEventListener('click', (e) => { if (e.target =
 
 if (resultsSection) {
     resultsSection.addEventListener('click', async (event) => {
-        // 하트 버튼 클릭 처리
         const wishlistBtn = event.target.closest('.wishlist-btn');
         if (wishlistBtn) {
             event.stopPropagation();
@@ -299,7 +293,6 @@ if (resultsSection) {
             return;
         }
         
-        // 카드 클릭 처리 (모달 열기)
         const card = event.target.closest('.movie-card');
         if (card) {
             const movieId = card.dataset.id;
@@ -314,36 +307,44 @@ if (resultsSection) {
 }
 
 async function displayDetailsView() {
-    const { poster_path, title, name, id, media_type, overview } = currentMovieData;
-    const posterPath = poster_path ? `https://image.tmdb.org/t/p/w500${poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
-    const credits = await fetchCredits(media_type, id);
+    const posterPath = currentMovieData.poster_path ? 'https://image.tmdb.org/t/p/w500' + currentMovieData.poster_path : 'https://placehold.co/500x750?text=No+Image';
+    const credits = await fetchCredits(currentMovieData.media_type, currentMovieData.id);
     if (modalPoster) modalPoster.src = posterPath;
-    if (modalTitle) modalTitle.textContent = title || name;
-    if (modalCredits) modalCredits.innerHTML = `<p><strong>감독:</strong> ${credits.director}</p><p><strong>출연:</strong> ${credits.cast}</p>`;
-    if (modalOverview) modalOverview.textContent = overview || '줄거리 정보가 없습니다.';
+    if (modalTitle) modalTitle.textContent = currentMovieData.title || currentMovieData.name;
+    if (modalCredits) modalCredits.innerHTML = '<p><strong>감독:</strong> ' + credits.director + '</p><p><strong>출연:</strong> ' + credits.cast + '</p>';
+    if (modalOverview) modalOverview.textContent = currentMovieData.overview || '줄거리 정보가 없습니다.';
     if (detailsView) detailsView.style.display = 'block';
     if (reviewView) reviewView.style.display = 'none';
 }
 
 if (showReviewViewBtn) {
     showReviewViewBtn.addEventListener('click', async () => {
-        const { title, name, id } = currentMovieData;
-        if (reviewModalTitle) reviewModalTitle.textContent = `${title || name} - 리뷰`;
-        const { data } = await supabaseClient.from('reviews').select('review_text').match({ movie_id: id, group_id: GROUP_ID }).single();
-        if (reviewTextarea) {
-            reviewTextarea.value = data?.review_text || '';
-            reviewTextarea.focus(); // Focus for immediate typing
-        }
+        const title = currentMovieData.title || currentMovieData.name;
+        const id = currentMovieData.id;
+        if (reviewModalTitle) reviewModalTitle.textContent = title + ' - 리뷰';
+        
+        const { data } = await supabaseClient
+            .from('reviews')
+            .select('review_text, tier_me, tier_partner')
+            .eq('movie_id', id)
+            .eq('group_id', GROUP_ID);
+        
+        const review = data && data.length > 0 ? data[0] : null;
+        
+        if (reviewTextarea) reviewTextarea.value = review?.review_text || '';
+        if (tierMeSelect) tierMeSelect.value = review?.tier_me || '';
+        if (tierPartnerSelect) tierPartnerSelect.value = review?.tier_partner || '';
+        
+        if (reviewTextarea) reviewTextarea.focus();
         if (detailsView) detailsView.style.display = 'none';
         if (reviewView) reviewView.style.display = 'block';
     });
 }
 
-// Keyboard shortcuts for review textarea
 if (reviewTextarea) {
     reviewTextarea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); // Prevent newline
+            e.preventDefault();
             if (saveButton) saveButton.click();
         } else if (e.key === 'Escape') {
             e.preventDefault();
@@ -352,10 +353,9 @@ if (reviewTextarea) {
     });
 }
 
-// Global ESC key to close modal (Issue 1)
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-        if (typeof modalOverlay !== 'undefined' && modalOverlay && modalOverlay.classList.contains('visible')) {
+        if (modalOverlay && modalOverlay.classList.contains('visible')) {
             closeModal();
         }
     }
@@ -370,24 +370,33 @@ if (backToDetailsBtn) {
 
 if (saveButton) {
     saveButton.addEventListener('click', async () => {
-        const { id, media_type, title, name, poster_path } = currentMovieData;
+        const id = currentMovieData.id;
+        const media_type = currentMovieData.media_type;
+        const title = currentMovieData.title || currentMovieData.name;
+        const poster_path = currentMovieData.poster_path;
         const reviewText = reviewTextarea.value.trim();
+        const tierMe = tierMeSelect ? tierMeSelect.value : null;
+        const tierPartner = tierPartnerSelect ? tierPartnerSelect.value : null;
+        
         const reviewData = { 
             movie_id: id, 
-            media_type, 
+            media_type: media_type, 
             review_text: reviewText, 
             group_id: GROUP_ID,
-            content_title: title || name,
-            content_image: poster_path ? `https://image.tmdb.org/t/p/w500${poster_path}` : ''
+            content_title: title,
+            content_image: poster_path ? 'https://image.tmdb.org/t/p/w500' + poster_path : '',
+            tier_me: tierMe || null,
+            tier_partner: tierPartner || null
         };
-        if (reviewText) {
+        
+        if (reviewText || tierMe || tierPartner) {
             const { error } = await supabaseClient.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
             if (error) alert('리뷰 저장 실패: ' + error.message);
-            else alert('리뷰가 저장되었습니다!');
+            else alert('저장되었습니다!');
         } else {
             const { error } = await supabaseClient.from('reviews').delete().match({ movie_id: id, group_id: GROUP_ID });
-            if (error) alert('리뷰 삭제 실패: ' + error.message);
-            else alert('리뷰가 삭제되었습니다.');
+            if (error) alert('삭제 실패: ' + error.message);
+            else alert('삭제되었습니다.');
         }
         if (backToDetailsBtn) backToDetailsBtn.click();
     });
