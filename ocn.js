@@ -177,11 +177,13 @@ async function handleWishlistClick(btn) {
     const image = content.poster_path ? `https://image.tmdb.org/t/p/w500${content.poster_path}` : '';
     
     // 이미 위시리스트에 있는지 확인
-    const { data: existing } = await supabaseClient
+    const { data: existingList } = await supabaseClient
         .from('wishlists')
         .select('id')
-        .match({ content_id: contentId, group_id: GROUP_ID })
-        .single();
+        .eq('content_id', contentId)
+        .eq('group_id', GROUP_ID);
+    
+    const existing = existingList && existingList.length > 0 ? existingList[0] : null;
     
     if (existing) {
         // 위시리스트에서 제거
@@ -212,7 +214,8 @@ async function handleWishlistClick(btn) {
 async function createCardHTML(item) {
     const credits = await fetchCredits(item.media_type, item.id);
     const title = item.title || item.name;
-    const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
+    const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://placehold.co/500x750?text=No+Image'
+;
     return `
         <div class="movie-card" data-id="${item.id}" data-type="${item.media_type}">
             <div class="movie-card-poster">

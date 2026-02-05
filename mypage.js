@@ -130,7 +130,7 @@ async function createCardHTML(item) {
 
 function createReviewCardHTML(review) {
     const title = review.content_title || '제목 없음';
-    const image = review.content_image || 'https://via.placeholder.com/150x220?text=No+Image';
+    const image = review.content_image || 'https://placehold.co/150x220?text=No+Image';
     const reviewPreview = review.review_text 
         ? (review.review_text.length > 80 
             ? review.review_text.substring(0, 80) + '...' 
@@ -240,22 +240,23 @@ async function fetchCredits(mediaType, id) {
 
 async function fetchItemDetails(mediaType, id) {
     if (mediaType === 'book') {
-        // Fetch book details from Proxy
+        // Books는 API로 상세정보 불러오기 어려우므로, 
+        // 저장된 리뷰 데이터에서 가져오기
         try {
-            const response = await fetch(`/api/books?query=${encodeURIComponent(id)}&display=1`);
-            if (!response.ok) return null;
-            const data = await response.json();
-            if (data.items && data.items.length > 0) {
-                const book = data.items[0];
-                // Standardize structure to match what createCardHTML expects as much as possible
+            const { data: review } = await supabaseClient
+                .from('reviews')
+                .select('*')
+                .match({ movie_id: id, group_id: GROUP_ID })
+                .single();
+            
+            if (review) {
                 return {
                     id: id,
-                    title: stripHtml(book.title),
-                    name: stripHtml(book.title), // fallback
-                    poster_path: null, // handled in createCardHTML via 'image' property
-                    image: book.image,
+                    title: review.content_title || '제목 없음',
+                    name: review.content_title || '제목 없음',
+                    image: review.content_image || '',
                     media_type: 'book',
-                    overview: stripHtml(book.description)
+                    overview: '저장된 리뷰를 확인하세요.'
                 };
             }
             return null;
