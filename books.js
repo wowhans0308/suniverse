@@ -5,7 +5,6 @@ const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 const searchInput = document.querySelector('.search-input');
 const searchButton = document.querySelector('.search-button');
-const categoryButtons = document.querySelectorAll('.cat-btn');
 const resultsSection = document.getElementById('home-results');
 const modalOverlay = document.querySelector('.modal-overlay');
 const closeButton = document.querySelector('.close-button');
@@ -24,16 +23,15 @@ const recentSearchesContainer = document.getElementById('recent-searches-contain
 const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
 
-const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
 const GROUP_ID = sessionStorage.getItem('appGroupId');
-let currentCategory = '전체';
+// Use relative path for the proxy API
+const PROXY_URL = 'https://suniverse-api-ew8y.vercel.app/api/books';
 let lastResults = [];
-let currentMovieData = {};
+let currentBookData = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!GROUP_ID) {
-        document.body.innerHTML = '';
-        location.href = 'index.html'; // 또는 login.html
+        location.href = 'index.html';
         return;
     }
     displayRecentSearches();
@@ -44,7 +42,7 @@ if (searchButton && searchInput) {
         const searchTerm = searchInput.value.trim();
         if (searchTerm === '') { return alert('검색어를 입력해주세요!'); }
         saveRecentSearch(searchTerm);
-        fetchMovies(searchTerm);
+        fetchBooks(searchTerm);
     });
     searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && searchButton) { searchButton.click(); }
@@ -59,84 +57,52 @@ if (logoutButton) {
     });
 }
 
-async function fetchCredits(mediaType, id) {
-    const url = `https://api.themoviedb.org/3/${mediaType}/${id}/credits?api_key=${API_KEY}&language=ko-KR`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) return { director: '정보 없음', cast: '정보 없음' };
-        const data = await response.json();
-        const director = data.crew?.find(p => p.job === 'Director')?.name || data.created_by?.[0]?.name || '정보 없음';
-        const cast = data.cast?.slice(0, 5).map(p => p.name).join(', ') || '정보 없음';
-        return { director, cast };
-    } catch (e) { return { director: '정보 없음', cast: '정보 없음' }; }
-}
-
-async function fetchMovies(query) {
+async function fetchBooks(query) {
     if (recentSearchesContainer) recentSearchesContainer.style.display = 'none';
     if (resultsSection) resultsSection.innerHTML = '<p class="loading">검색 중...</p>';
-    const url = `https://api.themoviedb.org/3/search/multi?api_key=${API_KEY}&language=ko-KR&query=${query}`;
+
     try {
+        // Construct standard URL for proxy
+        const url = `${PROXY_URL}?query=${encodeURIComponent(query)}&display=20`;
+        console.log('Fetching:', url);
+
         const response = await fetch(url);
-        if (!response.ok) throw new Error('API 요청 실패');
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`API Error ${response.status}: ${errText}`);
+        }
+
         const data = await response.json();
-        lastResults = data.results;
-        await displayResults();
+        console.log('API Response:', data);
+
+        // Naver API returns 'items' array. Handle possible empty/undefined cases.
+        lastResults = data.items || [];
+        displayResults();
     } catch (e) {
-        if (resultsSection) resultsSection.innerHTML = '<p class="no-results">오류가 발생했습니다.</p>';
+        console.error('Fetch error:', e);
+        if (resultsSection) {
+            resultsSection.innerHTML = `<p class="no-results">오류가 발생했습니다: ${e.message}</p>`;
+        }
     }
 }
-
-async function fetchItemDetails(mediaType, id) {
-    const url = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${API_KEY}&language=ko-KR`;
-    try {
-        const response = await fetch(url);
-        return response.ok ? response.json() : null;
-    } catch (e) { return null; }
-}
-
-const filterItem = (item) => {
-    const isAnimation = item.genre_ids?.includes(16);
-    if (!item.media_type) return false;
-    switch (currentCategory) {
-        case '전체': return true;
-        case '영화': return item.media_type === 'movie' && !isAnimation;
-        case '드라마': return item.media_type === 'tv' && !isAnimation;
-        case '애니메이션': return isAnimation;
-        default: return false;
-    }
-};
 
 async function displayResults() {
     if (!resultsSection) return;
     resultsSection.innerHTML = '';
-    const displayedMovieIds = new Set();
-    const itemsToDisplay = [];
-    lastResults.forEach(item => {
-        if (item.media_type === 'person') {
-            item.known_for?.forEach(work => {
-                if (work.media_type && !displayedMovieIds.has(work.id) && filterItem(work)) {
-                    itemsToDisplay.push(work);
-                    displayedMovieIds.add(work.id);
-                }
-            });
-        } else if ((item.media_type === 'movie' || item.media_type === 'tv') && !
-            displayedMovieIds.has(item.id) && filterItem(item)) {
-            itemsToDisplay.push(item);
-            displayedMovieIds.add(item.id);
-        }
-    });
 
-    if (itemsToDisplay.length === 0) {
-        resultsSection.innerHTML = '<p class="no-results">표시할 결과가 없습니다.</p>';
+    if (lastResults.length === 0) {
+        resultsSection.innerHTML = '<p class="no-results">검색 결과가 없습니다.</p>';
         return;
     }
-    const cardPromises = itemsToDisplay.map(item => createCardHTML(item));
-    const cardsHTML = (await Promise.all(cardPromises)).join('');
+
+    const cardsHTML = lastResults.map(book => createCardHTML(book)).join('');
     resultsSection.innerHTML = cardsHTML;
     
     // 위시리스트에 있는 항목 표시
     await markWishlistedItems();
 }
+
 async function markWishlistedItems() {
     const { data: wishlists } = await supabaseClient
         .from('wishlists')
@@ -151,30 +117,18 @@ async function markWishlistedItems() {
         }
     });
 }
+
 async function handleWishlistClick(btn) {
     const contentId = btn.dataset.id;
     const mediaType = btn.dataset.type;
     
-    // lastResults에서 해당 항목 찾기
-    let content = null;
-    for (const item of lastResults) {
-        if (item.id?.toString() === contentId) {
-            content = item;
-            break;
-        }
-        if (item.media_type === 'person' && item.known_for) {
-            const found = item.known_for.find(w => w.id?.toString() === contentId);
-            if (found) {
-                content = found;
-                break;
-            }
-        }
-    }
+    // lastResults에서 해당 책 찾기
+    const book = lastResults.find(b => b.isbn.split(' ')[0] === contentId);
     
-    if (!content) return;
+    if (!book) return;
     
-    const title = content.title || content.name;
-    const image = content.poster_path ? `https://image.tmdb.org/t/p/w500${content.poster_path}` : '';
+    const title = stripHtml(book.title);
+    const image = book.image || '';
     
     // 이미 위시리스트에 있는지 확인
     const { data: existing } = await supabaseClient
@@ -209,53 +163,53 @@ async function handleWishlistClick(btn) {
     }
 }
 
-async function createCardHTML(item) {
-    const credits = await fetchCredits(item.media_type, item.id);
-    const title = item.title || item.name;
-    const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
+function stripHtml(html) {
+    let tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+}
+
+function createCardHTML(book) {
+    const title = stripHtml(book.title);
+    const image = book.image || 'https://via.placeholder.com/150x220?text=No+Image';
+    const author = stripHtml(book.author);
+    const publisher = stripHtml(book.publisher);
+
+    // Use isbn as unique ID
+    const bookId = book.isbn.split(' ')[0];
+
     return `
-        <div class="movie-card" data-id="${item.id}" data-type="${item.media_type}">
+        <div class="movie-card" data-isbn="${bookId}">
             <div class="movie-card-poster">
-                <img src="${posterPath}" alt="${title} 포스터">
-                <button class="wishlist-btn" data-id="${item.id}" data-type="${item.media_type}" title="위시리스트에 추가">
+                <img src="${image}" alt="${title} 표지">
+                <button class="wishlist-btn" data-id="${bookId}" data-type="book" title="위시리스트에 추가">
                     <span class="material-symbols-outlined">favorite</span>
                 </button>
             </div>
             <div class="movie-info">
                 <h3>${title}</h3>
                 <div class="credits-info">
-                    <span><strong>감독:</strong> ${credits.director}</span>
-                    <span><strong>출연:</strong> ${credits.cast}</span>
+                    <span><strong>저자:</strong> ${author}</span>
+                    <span><strong>출판사:</strong> ${publisher}</span>
                 </div>
             </div>
         </div>
     `;
 }
 
-if (categoryButtons) {
-    categoryButtons.forEach(button => {
-        button.addEventListener('click', (event) => {
-            categoryButtons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            currentCategory = event.target.textContent;
-            if (lastResults.length > 0) displayResults();
-        });
-    });
-}
-
 function saveRecentSearch(term) {
     try {
-        let searches = JSON.parse(localStorage.getItem('recentSearches')) || [];
+        let searches = JSON.parse(localStorage.getItem('recentBookSearches')) || [];
         searches = searches.filter(s => s.toLowerCase() !== term.toLowerCase());
         searches.unshift(term);
-        localStorage.setItem('recentSearches', JSON.stringify(searches.slice(0, 10)));
+        localStorage.setItem('recentBookSearches', JSON.stringify(searches.slice(0, 10)));
     } catch (e) { console.error("최근 검색어 저장 실패:", e); }
 }
 
 function displayRecentSearches() {
     if (!recentSearchesContainer || !recentSearchesList) return;
     try {
-        const searches = JSON.parse(localStorage.getItem('recentSearches')) || [];
+        const searches = JSON.parse(localStorage.getItem('recentBookSearches')) || [];
         if (searches.length > 0) {
             recentSearchesList.innerHTML = searches.map(term => `<span class="recent-search-item"><span>${term}</span><button class="delete-search-btn" data-term="${term}">&times;</button></span>`).join('');
             recentSearchesContainer.style.display = 'block';
@@ -270,9 +224,9 @@ if (recentSearchesList) {
         const target = event.target;
         if (target.classList.contains('delete-search-btn')) {
             const termToDelete = target.dataset.term;
-            let searches = JSON.parse(localStorage.getItem('recentSearches')) || [];
+            let searches = JSON.parse(localStorage.getItem('recentBookSearches')) || [];
             searches = searches.filter(s => s !== termToDelete);
-            localStorage.setItem('recentSearches', JSON.stringify(searches));
+            localStorage.setItem('recentBookSearches', JSON.stringify(searches));
             displayRecentSearches();
         } else if (target.closest('.recent-search-item')) {
             const searchTerm = target.closest('.recent-search-item').querySelector('span').textContent;
@@ -299,64 +253,54 @@ if (resultsSection) {
         // 카드 클릭 처리 (모달 열기)
         const card = event.target.closest('.movie-card');
         if (card) {
-            const movieId = card.dataset.id;
-            const mediaType = card.dataset.type;
-            const details = await fetchItemDetails(mediaType, movieId);
-            if (!details) { alert('상세 정보를 불러오는 데 실패했습니다.'); return; }
-            currentMovieData = { ...details, media_type: mediaType };
-            await displayDetailsView();
+            const bookId = card.dataset.isbn;
+            const book = lastResults.find(b => b.isbn.startsWith(bookId) || b.isbn === bookId);
+
+            if (!book) { alert('상세 정보를 불러오는 데 실패했습니다.'); return; }
+            currentBookData = book;
+            displayDetailsView();
             if (modalOverlay) modalOverlay.classList.add('visible');
         }
     });
 }
 
-async function displayDetailsView() {
-    const { poster_path, title, name, id, media_type, overview } = currentMovieData;
-    const posterPath = poster_path ? `https://image.tmdb.org/t/p/w500${poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
-    const credits = await fetchCredits(media_type, id);
-    if (modalPoster) modalPoster.src = posterPath;
-    if (modalTitle) modalTitle.textContent = title || name;
-    if (modalCredits) modalCredits.innerHTML = `<p><strong>감독:</strong> ${credits.director}</p><p><strong>출연:</strong> ${credits.cast}</p>`;
-    if (modalOverview) modalOverview.textContent = overview || '줄거리 정보가 없습니다.';
+function displayDetailsView() {
+    const title = stripHtml(currentBookData.title);
+    const image = currentBookData.image || 'https://via.placeholder.com/300x450?text=No+Image';
+    const author = stripHtml(currentBookData.author);
+    const publisher = stripHtml(currentBookData.publisher);
+    const description = stripHtml(currentBookData.description || '책 소개가 없습니다.');
+
+    if (modalPoster) modalPoster.src = image;
+    if (modalTitle) modalTitle.textContent = title;
+    if (modalCredits) modalCredits.innerHTML = `<p><strong>저자:</strong> ${author}</p><p><strong>출판사:</strong> ${publisher}</p>`;
+    if (modalOverview) modalOverview.textContent = description;
     if (detailsView) detailsView.style.display = 'block';
     if (reviewView) reviewView.style.display = 'none';
 }
 
 if (showReviewViewBtn) {
     showReviewViewBtn.addEventListener('click', async () => {
-        const { title, name, id } = currentMovieData;
-        if (reviewModalTitle) reviewModalTitle.textContent = `${title || name} - 리뷰`;
-        const { data } = await supabaseClient.from('reviews').select('review_text').match({ movie_id: id, group_id: GROUP_ID }).single();
+        const title = stripHtml(currentBookData.title);
+        // Use first part of ISBN as stored ID
+        const bookId = currentBookData.isbn.split(' ')[0];
+
+        if (reviewModalTitle) reviewModalTitle.textContent = `${title} - 리뷰`;
+
+        const { data } = await supabaseClient.from('reviews')
+            .select('review_text')
+            .match({ movie_id: bookId, group_id: GROUP_ID }) // Using movie_id column for book ID to reuse table
+            .single();
+
         if (reviewTextarea) {
             reviewTextarea.value = data?.review_text || '';
-            reviewTextarea.focus(); // Focus for immediate typing
+            reviewTextarea.focus();
         }
+
         if (detailsView) detailsView.style.display = 'none';
         if (reviewView) reviewView.style.display = 'block';
     });
 }
-
-// Keyboard shortcuts for review textarea
-if (reviewTextarea) {
-    reviewTextarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); // Prevent newline
-            if (saveButton) saveButton.click();
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            if (backToDetailsBtn) backToDetailsBtn.click();
-        }
-    });
-}
-
-// Global ESC key to close modal (Issue 1)
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-        if (typeof modalOverlay !== 'undefined' && modalOverlay && modalOverlay.classList.contains('visible')) {
-            closeModal();
-        }
-    }
-});
 
 if (backToDetailsBtn) {
     backToDetailsBtn.addEventListener('click', () => {
@@ -367,25 +311,57 @@ if (backToDetailsBtn) {
 
 if (saveButton) {
     saveButton.addEventListener('click', async () => {
-        const { id, media_type, title, name, poster_path } = currentMovieData;
+        const bookId = currentBookData.isbn.split(' ')[0];
         const reviewText = reviewTextarea.value.trim();
-        const reviewData = { 
-            movie_id: id, 
-            media_type, 
-            review_text: reviewText, 
+        const bookTitle = stripHtml(currentBookData.title);
+        const bookImage = currentBookData.image || '';
+        
+        const reviewData = {
+            movie_id: bookId,
+            media_type: 'book',
+            review_text: reviewText,
             group_id: GROUP_ID,
-            content_title: title || name,
-            content_image: poster_path ? `https://image.tmdb.org/t/p/w500${poster_path}` : ''
+            content_title: bookTitle,
+            content_image: bookImage
         };
+
         if (reviewText) {
-            const { error } = await supabaseClient.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
+            const { error } = await supabaseClient.from('reviews')
+                .upsert(reviewData, { onConflict: 'movie_id, group_id' });
+
             if (error) alert('리뷰 저장 실패: ' + error.message);
             else alert('리뷰가 저장되었습니다!');
         } else {
-            const { error } = await supabaseClient.from('reviews').delete().match({ movie_id: id, group_id: GROUP_ID });
+            const { error } = await supabaseClient.from('reviews')
+                .delete()
+                .match({ movie_id: bookId, group_id: GROUP_ID });
+
             if (error) alert('리뷰 삭제 실패: ' + error.message);
             else alert('리뷰가 삭제되었습니다.');
         }
         if (backToDetailsBtn) backToDetailsBtn.click();
+    });
+}
+
+// Global ESC key to close modal (Issue 1)
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        if (modalOverlay && modalOverlay.classList.contains('visible')) {
+            closeModal();
+        }
+    }
+});
+
+// Keyboard shortcuts for review textarea
+if (reviewTextarea) {
+    reviewTextarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (saveButton) saveButton.click();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            if (backToDetailsBtn) backToDetailsBtn.click();
+            else closeModal();
+        }
     });
 }

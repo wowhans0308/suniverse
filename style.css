@@ -1,3 +1,7 @@
+/* =============================================
+   SUNIVERSE - Responsive CSS (Mobile-First)
+   ============================================= */
+
 :root {
     --bg-color: #1a1a1a;
     --surface-color: #242424;
@@ -10,76 +14,955 @@
     --title-font-family: 'Playfair Display', serif;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-color); }
-.main-container { width: 100%; max-width: 960px; margin: 0 auto; padding: 60px 20px; }
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-.app-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 50px; }
-.app-title h1 { font-family: var(--title-font-family); font-size: 2.5rem; font-weight: 500; font-style: italic; color: #fff; }
-.title-link { color: inherit; text-decoration: none; position: absolute; left: 50%; transform: translateX(-50%); }
-.icon-button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background-color: var(--surface-color); color: var(--text-color); border-radius: 30px; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; border: 1px solid var(--border-color); cursor: pointer; }
-.icon-button:hover { background-color: #333; color: #fff; border-color: #555; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-a.icon-button { text-decoration: none; }
-.header-right-buttons { display: flex; gap: 10px; }
-.portal-home-link { border-color: var(--primary-color); }
-.portal-home-link:hover { background-color: var(--primary-color); }
-.logout-button { background-color: transparent; border-color: #583333; color: #d48a8a; }
-.logout-button:hover { background-color: #c93b3b; border-color: #c93b3b; color: #fff; }
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
 
-.search-box { display: flex; margin-bottom: 25px; border-radius: 30px; overflow: hidden; border: 1px solid var(--border-color); transition: box-shadow 0.2s; }
-.search-box:focus-within { box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.5); }
-.search-input { flex-grow: 1; padding: 15px 25px; border: none; background-color: var(--surface-color); color: var(--text-color); font-size: 1.1rem; outline: none; }
-.search-button { padding: 0 30px; border: none; background-color: var(--primary-color); color: #ffffff; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
-.search-button:hover { background-color: var(--primary-hover-color); }
-.category-buttons { display: flex; justify-content: center; gap: 12px; margin-bottom: 50px; flex-wrap: wrap; }
-.cat-btn { padding: 8px 22px; border: 1px solid var(--border-color); border-radius: 20px; background-color: transparent; color: var(--text-muted-color); font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-.cat-btn:hover { background-color: var(--surface-color); color: var(--text-color); border-color: #555; }
-.cat-btn.active { background-color: var(--primary-color); color: #ffffff; border-color: var(--primary-color); font-weight: 700; }
-.results-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 25px; }
+/* =============================================
+   MAIN CONTAINER - Mobile First
+   ============================================= */
+.main-container {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 15px;
+}
 
-.movie-card { background-color: var(--surface-color); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; display: flex; flex-direction: column; }
-.movie-card:hover { transform: scale(1.05); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); }
-.movie-card-poster { position: relative; }
-.movie-card-poster::before { content: ''; display: block; padding-top: 150%; }
-.movie-card-poster img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-.movie-card .movie-info { padding: 16px; flex-grow: 1; display: flex; flex-direction: column; }
-.movie-card h3 { font-size: 1rem; font-weight: 500; margin-bottom: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.movie-card .credits-info { font-size: 0.8rem; color: var(--text-muted-color); line-height: 1.5; flex-grow: 1; }
-.movie-card .credits-info span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* =============================================
+   HEADER - Mobile First
+   ============================================= */
+.app-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    position: relative;
+}
 
-#recent-searches-container { grid-column: 1 / -1; padding: 20px; background-color: var(--surface-color); border-radius: 12px; }
-#recent-searches-container h2 { font-size: 1.2rem; font-weight: 500; margin-bottom: 20px; color: var(--text-muted-color); text-align: center; }
-#recent-searches-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.recent-search-item { position: relative; padding: 8px 32px 8px 16px; background-color: #333; color: var(--text-color); border-radius: 20px; font-size: 0.9rem; transition: all 0.2s; }
-.recent-search-item > span { cursor: pointer; }
-.recent-search-item:hover { background-color: var(--primary-color); color: #fff; }
-.delete-search-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #888; cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 2px; }
-.delete-search-btn:hover { color: #fff; }
+.app-title h1 {
+    font-family: var(--title-font-family);
+    font-size: 1.6rem;
+    font-weight: 500;
+    font-style: italic;
+    color: #fff;
+    text-align: center;
+    order: 1;
+}
 
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.3s; }
-.modal-overlay.visible { display: flex; opacity: 1; }
-.modal-content { background-color: var(--surface-color); padding: 0; border-radius: 16px; width: 90%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.3s; }
-.modal-overlay.visible .modal-content { transform: scale(1); }
-.close-button { position: absolute; top: 15px; right: 20px; background: none; border: none; color: var(--text-muted-color); font-size: 2.5rem; font-weight: 300; line-height: 1; cursor: pointer; transition: color 0.2s; z-index: 10; }
-.close-button:hover { color: #fff; }
+.title-link {
+    color: inherit;
+    text-decoration: none;
+    order: 1;
+}
 
-#details-view, #review-view { padding: 35px; }
-.details-layout { display: flex; gap: 30px; flex-wrap: wrap; }
-#modal-poster { width: 100%; max-width: 250px; border-radius: 8px; object-fit: cover; align-self: flex-start; margin: 0 auto 20px; }
-.details-info { flex: 1; min-width: 300px; }
-#modal-title { margin-top: 0; margin-bottom: 20px; font-size: 2rem; font-weight: 500; color: #fff; }
-#modal-credits { margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted-color); line-height: 1.6; }
-#modal-credits strong { color: var(--text-color); font-weight: 500; }
-#modal-overview { font-size: 1rem; line-height: 1.7; color: var(--text-color); max-height: 300px; overflow-y: auto; padding-right: 10px; }
-.modal-actions { text-align: center; padding-top: 30px; }
-#show-review-view-btn { padding: 12px 28px; background-color: var(--primary-color); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
-#show-review-view-btn:hover { background-color: var(--primary-hover-color); }
-#review-modal-title { margin-bottom: 20px; }
-#review-textarea { width: 100%; height: calc(90vh - 250px); min-height: 200px; padding: 15px; margin-bottom: 25px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1rem; font-family: var(--font-family); resize: vertical; transition: box-shadow 0.2s; }
-#review-textarea:focus { outline: none; box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.5); }
-.modal-buttons { display: flex; justify-content: flex-end; gap: 12px; }
-.modal-buttons button { padding: 12px 28px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s, transform 0.2s; }
-.modal-buttons button:hover { transform: translateY(-2px); }
-#save-button { background-color: var(--primary-color); color: white; }
-#back-to-details-btn { background-color: #4f4f4f; color: var(--text-color); }
-.no-results, .loading { color: var(--text-muted-color); text-align: center; grid-column: 1 / -1; font-size: 1.1rem; padding: 50px 0; }
+.portal-home-link {
+    order: 0;
+}
+
+.header-right-buttons {
+    display: flex;
+    gap: 8px;
+    order: 2;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* =============================================
+   ICON BUTTONS - Mobile First
+   ============================================= */
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.icon-button:hover {
+    background-color: #333;
+    color: #fff;
+    border-color: #555;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+a.icon-button {
+    text-decoration: none;
+}
+
+.portal-home-link {
+    border-color: var(--primary-color);
+}
+
+.portal-home-link:hover {
+    background-color: var(--primary-color);
+}
+
+.logout-button {
+    background-color: transparent;
+    border-color: #583333;
+    color: #d48a8a;
+}
+
+.logout-button:hover {
+    background-color: #c93b3b;
+    border-color: #c93b3b;
+    color: #fff;
+}
+
+/* =============================================
+   SEARCH BOX - Mobile First
+   ============================================= */
+.search-box {
+    display: flex;
+    margin-bottom: 20px;
+    border-radius: 30px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    transition: box-shadow 0.2s;
+}
+
+.search-box:focus-within {
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.5);
+}
+
+.search-input {
+    flex-grow: 1;
+    padding: 12px 18px;
+    border: none;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.search-button {
+    padding: 0 20px;
+    border: none;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+/* =============================================
+   CATEGORY BUTTONS - Mobile First
+   ============================================= */
+.category-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.cat-btn {
+    padding: 6px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background-color: transparent;
+    color: var(--text-muted-color);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cat-btn:hover {
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    border-color: #555;
+}
+
+.cat-btn.active {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+    font-weight: 700;
+}
+
+/* =============================================
+   RESULTS GRID - Mobile First (3 columns for compact view)
+   ============================================= */
+.results-section {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+/* =============================================
+   MOVIE CARDS - Mobile First
+   ============================================= */
+.movie-card {
+    background-color: var(--surface-color);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.movie-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.movie-card-poster {
+    position: relative;
+}
+
+.movie-card-poster::before {
+    content: '';
+    display: block;
+    padding-top: 150%;
+}
+
+.movie-card-poster img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.movie-card .movie-info {
+    padding: 6px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.movie-card h3 {
+    font-size: 0.65rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hide credits on mobile for compact view */
+.movie-card .credits-info {
+    display: none;
+}
+
+.movie-card .credits-info span {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.review-preview {
+    font-size: 0.8rem;
+    color: var(--text-muted-color);
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    margin-top: 5px;
+}
+
+/* =============================================
+   MY PAGE TABS
+   ============================================= */
+.mypage-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.tab-btn {
+    padding: 10px 25px;
+    border: 1px solid var(--border-color);
+    border-radius: 25px;
+    background-color: transparent;
+    color: var(--text-muted-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    background-color: var(--surface-color);
+    color: var(--text-color);
+}
+
+.tab-btn.active {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+}
+
+/* =============================================
+   RECENT SEARCHES - Mobile First
+   ============================================= */
+#recent-searches-container {
+    grid-column: 1 / -1;
+    padding: 15px;
+    background-color: var(--surface-color);
+    border-radius: 10px;
+}
+
+#recent-searches-container h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 15px;
+    color: var(--text-muted-color);
+    text-align: center;
+}
+
+#recent-searches-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.recent-search-item {
+    position: relative;
+    padding: 6px 28px 6px 12px;
+    background-color: #333;
+    color: var(--text-color);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.recent-search-item>span {
+    cursor: pointer;
+}
+
+.recent-search-item:hover {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+.delete-search-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 2px;
+}
+
+.delete-search-btn:hover {
+    color: #fff;
+}
+
+/* =============================================
+   MODAL - Mobile First
+   ============================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s;
+    padding: 10px;
+}
+
+.modal-overlay.visible {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content {
+    background-color: var(--surface-color);
+    padding: 0;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95);
+    transition: transform 0.3s;
+    overflow-y: auto;
+}
+
+.modal-overlay.visible .modal-content {
+    transform: scale(1);
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--text-muted-color);
+    font-size: 2rem;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+    z-index: 10;
+}
+
+.close-button:hover {
+    color: #fff;
+}
+
+/* =============================================
+   MODAL DETAILS & REVIEW VIEWS - Mobile First
+   ============================================= */
+#details-view,
+#review-view {
+    padding: 25px 20px;
+}
+
+.details-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#modal-poster {
+    width: 100%;
+    max-width: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+    align-self: center;
+    margin: 0 auto;
+}
+
+.details-info {
+    flex: 1;
+}
+
+#modal-title {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+}
+
+#modal-credits {
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    color: var(--text-muted-color);
+    line-height: 1.5;
+}
+
+#modal-credits strong {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+#modal-overview {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-color);
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.modal-actions {
+    text-align: center;
+    padding-top: 20px;
+}
+
+#show-review-view-btn {
+    padding: 10px 22px;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#show-review-view-btn:hover {
+    background-color: var(--primary-hover-color);
+}
+
+#review-modal-title {
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+#review-textarea {
+    width: 100%;
+    height: 250px;
+    min-height: 150px;
+    padding: 12px;
+    margin-bottom: 20px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    font-family: var(--font-family);
+    resize: vertical;
+    transition: box-shadow 0.2s;
+}
+
+#review-textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.5);
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.modal-buttons button {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.modal-buttons button:hover {
+    transform: translateY(-2px);
+}
+
+#save-button {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#back-to-details-btn {
+    background-color: #4f4f4f;
+    color: var(--text-color);
+}
+
+.no-results,
+.loading {
+    color: var(--text-muted-color);
+    text-align: center;
+    grid-column: 1 / -1;
+    font-size: 1rem;
+    padding: 40px 0;
+}
+
+/* =============================================
+   PORTAL PAGE STYLES - Mobile First
+   ============================================= */
+.portal-container {
+    max-width: 800px;
+    padding: 20px;
+    margin: 0 auto;
+}
+
+.portal-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    margin-bottom: 40px;
+    color: #9b59b6;
+    /* Purple */
+    text-shadow: 0 0 10px #8e44ad, 0 0 20px #8e44ad;
+    text-align: center;
+}
+
+.service-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.service-button {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    text-decoration: none;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    transition: all 0.3s;
+}
+
+.service-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #00aaff;
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 170, 255, 0.2);
+}
+
+.service-button.disabled {
+    color: #555;
+    background-color: rgba(0, 0, 0, 0.2);
+    cursor: not-allowed;
+}
+
+.service-button.disabled:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* =============================================
+   TABLET & DESKTOP STYLES (min-width: 768px)
+   ============================================= */
+@media (min-width: 768px) {
+
+    /* Main Container */
+    .main-container {
+        padding: 60px 20px;
+    }
+
+    /* Header */
+    .app-title {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 50px;
+    }
+
+    .app-title h1 {
+        font-size: 2.5rem;
+        order: 0;
+    }
+
+    .title-link {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        order: 0;
+    }
+
+    .portal-home-link {
+        order: 0;
+    }
+
+    .header-right-buttons {
+        gap: 10px;
+        order: 0;
+    }
+
+    /* Icon Buttons */
+    .icon-button {
+        gap: 8px;
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Search Box */
+    .search-box {
+        margin-bottom: 25px;
+    }
+
+    .search-input {
+        padding: 15px 25px;
+        font-size: 1.1rem;
+    }
+
+    .search-button {
+        padding: 0 30px;
+        font-size: 1rem;
+    }
+
+    /* Category Buttons */
+    .category-buttons {
+        gap: 12px;
+        margin-bottom: 50px;
+    }
+
+    .cat-btn {
+        padding: 8px 22px;
+        font-size: 0.9rem;
+    }
+
+    /* Results Grid */
+    .results-section {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 25px;
+    }
+
+    /* Movie Cards */
+    .movie-card:hover {
+        transform: scale(1.05);
+    }
+
+    .movie-card .movie-info {
+        padding: 16px;
+    }
+
+    .movie-card h3 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    /* Show credits on desktop */
+    .movie-card .credits-info {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--text-muted-color);
+        line-height: 1.5;
+    }
+
+    /* Recent Searches */
+    #recent-searches-container {
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    #recent-searches-container h2 {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+    }
+
+    #recent-searches-list {
+        gap: 10px;
+    }
+
+    .recent-search-item {
+        padding: 8px 32px 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        padding: 20px;
+    }
+
+    .modal-content {
+        border-radius: 16px;
+        max-height: 90vh;
+    }
+
+    .close-button {
+        top: 15px;
+        right: 20px;
+        font-size: 2.5rem;
+    }
+
+    /* Modal Details */
+    #details-view,
+    #review-view {
+        padding: 35px;
+    }
+
+    .details-layout {
+        flex-direction: row;
+        gap: 30px;
+    }
+
+    #modal-poster {
+        width: 100%;
+        max-width: 250px;
+        align-self: flex-start;
+        margin: 0;
+    }
+
+    .details-info {
+        min-width: 300px;
+    }
+
+    #modal-title {
+        font-size: 2rem;
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    #modal-credits {
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    #modal-overview {
+        font-size: 1rem;
+        line-height: 1.7;
+        max-height: 300px;
+        padding-right: 10px;
+    }
+
+    .modal-actions {
+        padding-top: 30px;
+    }
+
+    #show-review-view-btn {
+        padding: 12px 28px;
+        font-size: 1rem;
+    }
+
+    #review-modal-title {
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+    }
+
+    #review-textarea {
+        height: calc(90vh - 250px);
+        min-height: 200px;
+        padding: 15px;
+        margin-bottom: 25px;
+        font-size: 1rem;
+    }
+
+    .modal-buttons {
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .modal-buttons button {
+        padding: 12px 28px;
+        font-size: 1rem;
+    }
+
+    .no-results,
+    .loading {
+        font-size: 1.1rem;
+        padding: 50px 0;
+    }
+
+    /* Portal Page */
+    .portal-container {
+        padding: 20px;
+    }
+
+    .portal-title {
+        font-size: 4rem;
+        margin-bottom: 60px;
+    }
+
+    .service-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+    }
+
+    .service-button {
+        height: 150px;
+        padding: 20px;
+        font-size: 1.5rem;
+    }
+}
+
+/* =============================================
+   EXTRA SMALL SCREENS (max-width: 400px)
+   ============================================= */
+@media (max-width: 400px) {
+    /* .results-section override removed to allow 3-column grid */
+
+    .portal-title {
+        font-size: 2rem;
+    }
+
+    .app-title h1 {
+        font-size: 1.4rem;
+    }
+
+    .category-buttons {
+        gap: 6px;
+    }
+
+    .cat-btn {
+        padding: 5px 12px;
+        font-size: 0.75rem;
+    }
+}
+/* =============================================
+   WISHLIST HEART BUTTON
+   ============================================= */
+.wishlist-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    opacity: 0;
+    z-index: 5;
+}
+
+.movie-card:hover .wishlist-btn {
+    opacity: 1;
+}
+
+.wishlist-btn:hover {
+    background-color: rgba(255, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+.wishlist-btn.active {
+    background-color: #e74c3c;
+    opacity: 1;
+}
+
+.wishlist-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+@media (min-width: 768px) {
+    .wishlist-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .wishlist-btn .material-symbols-outlined {
+        font-size: 20px;
+    }
+}

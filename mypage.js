@@ -19,17 +19,53 @@ const reviewTextarea = document.getElementById('review-textarea');
 const backToDetailsBtn = document.getElementById('back-to-details-btn');
 const saveButton = document.getElementById('save-button');
 const logoutButton = document.getElementById('logout-button');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const backLink = document.querySelector('.home-link');
 
 const GROUP_ID = sessionStorage.getItem('appGroupId');
+// Get source from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const source = urlParams.get('source') || 'ocn'; // default to ocn
+let currentTab = source;
 let currentMovieData = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!GROUP_ID) {
-        location.href = 'index.html'; // 또는 login.html
+        location.href = 'index.html';
         return;
     }
+
+    // Set active tab based on URL source
+    tabButtons.forEach(btn => {
+        if (btn.dataset.type === source) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+
+        btn.addEventListener('click', () => {
+            tabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTab = btn.dataset.type;
+            updateBackLink();
+            loadMyReviews();
+        });
+    });
+
+    updateBackLink();
     loadMyReviews();
 });
+
+function updateBackLink() {
+    if (backLink) {
+        backLink.href = currentTab === 'books' ? 'books.html' : 'ocn.html?source=ocn';
+        // Optional: Update text/icon based on source if needed
+        const iconSpan = backLink.querySelector('span');
+        if (iconSpan) {
+            backLink.innerHTML = `<span class="material-symbols-outlined">arrow_back</span> ${currentTab === 'books' ? 'Books' : 'OCN'}`;
+        }
+    }
+}
 
 if (logoutButton) {
     logoutButton.addEventListener('click', () => {
@@ -40,10 +76,18 @@ if (logoutButton) {
 }
 
 async function loadMyReviews() {
-    if(!reviewsListContainer) return;
+    if (!reviewsListContainer) return;
     reviewsListContainer.innerHTML = '<p class="loading">리뷰를 불러오는 중...</p>';
-    
-    const { data: reviews, error } = await supabaseClient.from('reviews').select('*').eq('group_id', GROUP_ID);
+
+    let query = supabaseClient.from('reviews').select('*').eq('group_id', GROUP_ID);
+
+    if (currentTab === 'ocn') {
+        query = query.in('media_type', ['movie', 'tv']);
+    } else if (currentTab === 'books') {
+        query = query.eq('media_type', 'book');
+    }
+
+    const { data: reviews, error } = await query;
 
     if (error) {
         reviewsListContainer.innerHTML = `<p class="no-results">리뷰를 불러오는 데 실패했습니다.</p>`;
@@ -53,28 +97,57 @@ async function loadMyReviews() {
         reviewsListContainer.innerHTML = '<p class="no-results">아직 작성한 리뷰가 없습니다.</p>';
         return;
     }
-    
-    const reviewItems = [];
-    await Promise.all(reviews.map(async (review) => {
-        const itemDetails = await fetchItemDetails(review.media_type, review.movie_id);
-        if (itemDetails) {
-            itemDetails.media_type = review.media_type;
-            reviewItems.push(itemDetails);
-        }
-    }));
-    
-    reviewItems.sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name));
-    
-    const cardPromises = reviewItems.map(item => createCardHTML(item));
-    const cards = await Promise.all(cardPromises);
-    reviewsListContainer.innerHTML = cards.join('');
+
+    // 저장된 데이터 직접 사용 (API 호출 불필요)
+    reviews.sort((a, b) => (a.content_title || '').localeCompare(b.content_title || ''));
+
+    const cardsHTML = reviews.map(review => createReviewCardHTML(review)).join('');
+    reviewsListContainer.innerHTML = cardsHTML;
+}
+function stripHtml(html) {
+    let tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
 }
 
 async function createCardHTML(item) {
-    const credits = await fetchCredits(item.media_type, item.id);
+    // For books, item comes from Naver API structure tailored in fetchItemDetails
+    // For movies, item comes from TMDB structure
+
     const title = item.title || item.name;
-    const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image';
-    return `<div class="movie-card my-review-version" data-id="${item.id}" data-type="${item.media_type}"><div class="movie-card-poster"><img src="${posterPath}" alt="${title} 포스터"></div><div class="movie-info"><h3>${title}</h3><div class="credits-info"><span><strong>감독:</strong> ${credits.director}</span><span><strong>출연:</strong> ${credits.cast}</span></div></div></div>`;
+    let posterPath = '';
+
+    if (item.media_type === 'book') {
+        posterPath = item.image; // Naver API returns 'image' (already full URL)
+    } else {
+        posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null;
+    }
+
+    if (!posterPath) posterPath = 'https://via.placeholder.com/500x750?text=No+Image';
+
+    return `<div class="movie-card my-review-version" data-id="${item.id}" data-type="${item.media_type}"><div class="movie-card-poster"><img src="${posterPath}" alt="${title} 포스터"></div><div class="movie-info"><h3>${title}</h3><p class="review-preview">${item.review_text || '리뷰 내용 없음'}</p></div></div>`;
+}
+
+function createReviewCardHTML(review) {
+    const title = review.content_title || '제목 없음';
+    const image = review.content_image || 'https://via.placeholder.com/150x220?text=No+Image';
+    const reviewPreview = review.review_text 
+        ? (review.review_text.length > 80 
+            ? review.review_text.substring(0, 80) + '...' 
+            : review.review_text)
+        : '리뷰 내용 없음';
+
+    return `
+        <div class="movie-card" data-id="${review.movie_id}" data-type="${review.media_type}">
+            <div class="movie-card-poster">
+                <img src="${image}" alt="${title}">
+            </div>
+            <div class="movie-info">
+                <h3>${title}</h3>
+                <p class="review-preview">${reviewPreview}</p>
+            </div>
+        </div>
+    `;
 }
 
 function closeModal() { if (modalOverlay) modalOverlay.classList.remove('visible'); }
@@ -91,31 +164,50 @@ if (reviewsListContainer) {
             if (!details) { alert('상세 정보를 불러오는 데 실패했습니다.'); return; }
             currentMovieData = { ...details, media_type: mediaType };
 
-            if(reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
+            if (reviewModalTitle) reviewModalTitle.textContent = `${currentMovieData.title || currentMovieData.name} - 리뷰`;
             const { data } = await supabaseClient.from('reviews').select('review_text').match({ movie_id: currentMovieData.id, group_id: GROUP_ID }).single();
-            if(reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
-            
-            if(detailsView) detailsView.style.display = 'none';
-            if(reviewView) reviewView.style.display = 'block';
+            if (reviewTextarea) reviewTextarea.value = data ? data.review_text : '';
+
+            if (detailsView) detailsView.style.display = 'none';
+            if (reviewView) reviewView.style.display = 'block';
             if (modalOverlay) modalOverlay.classList.add('visible');
+
+            // Focus on textarea for convenience
+            if (reviewTextarea) {
+                setTimeout(() => reviewTextarea.focus(), 100);
+            }
         }
     });
 }
 
-if(backToDetailsBtn) {
+// Keyboard shortcuts for review textarea
+if (reviewTextarea) {
+    reviewTextarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); // Prevent newline
+            if (saveButton) saveButton.click();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            if (backToDetailsBtn) backToDetailsBtn.click(); // Standard behavior: back to details
+            else closeModal(); // Fallback: close modal
+        }
+    });
+}
+
+if (backToDetailsBtn) {
     backToDetailsBtn.addEventListener('click', () => {
         closeModal();
     });
 }
 
-if(saveButton){
+if (saveButton) {
     saveButton.addEventListener('click', async () => {
         const { id, media_type } = currentMovieData;
         const reviewText = reviewTextarea.value.trim();
-        const reviewData = { 
-            movie_id: id, 
+        const reviewData = {
+            movie_id: id,
             media_type,
-            review_text: reviewText, 
+            review_text: reviewText,
             group_id: GROUP_ID
         };
         if (reviewText) {
@@ -144,11 +236,37 @@ async function fetchCredits(mediaType, id) {
         return { director: creator || (director ? director.name : '정보 없음'), cast: cast || '정보 없음' };
     } catch (error) { return { director: '정보 없음', cast: '정보 없음' }; }
 }
+
+
 async function fetchItemDetails(mediaType, id) {
-    const url = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${API_KEY}&language=ko-KR`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) return null;
-        return await response.json();
-    } catch (error) { return null; }
+    if (mediaType === 'book') {
+        // Fetch book details from Proxy
+        try {
+            const response = await fetch(`/api/books?query=${encodeURIComponent(id)}&display=1`);
+            if (!response.ok) return null;
+            const data = await response.json();
+            if (data.items && data.items.length > 0) {
+                const book = data.items[0];
+                // Standardize structure to match what createCardHTML expects as much as possible
+                return {
+                    id: id,
+                    title: stripHtml(book.title),
+                    name: stripHtml(book.title), // fallback
+                    poster_path: null, // handled in createCardHTML via 'image' property
+                    image: book.image,
+                    media_type: 'book',
+                    overview: stripHtml(book.description)
+                };
+            }
+            return null;
+        } catch (e) { return null; }
+    } else {
+        // TMDB Fetch
+        const url = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${API_KEY}&language=ko-KR`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return null;
+            return await response.json();
+        } catch (error) { return null; }
+    }
 }

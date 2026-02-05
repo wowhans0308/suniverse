@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Reviews - Our Cinema Note</title>
+    <title>My Wish Lists - Suniverse</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -22,7 +22,7 @@
                 <span class="material-symbols-outlined">hub</span>
                 Portal
             </a>
-            <h1>My Reviews</h1>
+            <h1>My Wish Lists</h1>
             <div class="header-right-buttons">
                 <a href="ocn.html" class="icon-button home-link">
                     <span class="material-symbols-outlined">arrow_back</span>
@@ -39,39 +39,12 @@
             <button class="tab-btn" data-type="books">📚 Books</button>
         </div>
 
-        <main class="results-section" id="my-reviews-list"></main>
-    </div>
-
-    <div class="modal-overlay">
-        <div class="modal-content">
-            <div id="details-view">
-                <div class="details-layout">
-                    <img id="modal-poster" src="" alt="포스터">
-                    <div class="details-info">
-                        <h2 id="modal-title">영화 제목</h2>
-                        <div id="modal-credits"></div>
-                        <p id="modal-overview"></p>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button id="show-review-view-btn">리뷰 쓰기 / 수정</button>
-                </div>
-            </div>
-            <div id="review-view" style="display: none;">
-                <h2 id="review-modal-title">리뷰 작성</h2>
-                <textarea id="review-textarea" placeholder="이 작품에 대한 당신의 생각을 남겨보세요..."></textarea>
-                <div class="modal-buttons">
-                    <button id="back-to-details-btn">돌아가기</button>
-                    <button id="save-button">저장</button>
-                </div>
-            </div>
-            <button class="close-button">&times;</button>
-        </div>
+        <main class="results-section" id="wishlist-container"></main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="auth.js" defer></script>
-    <script src="mypage.js" defer></script>
+    <script src="mywishlist.js" defer></script>
 </body>
 
 </html>

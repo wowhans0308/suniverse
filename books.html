@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Reviews - Our Cinema Note</title>
+    <title>Our Book Note</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -20,13 +20,18 @@
         <header class="app-title">
             <a href="index.html" class="icon-button portal-home-link">
                 <span class="material-symbols-outlined">hub</span>
-                Portal
             </a>
-            <h1>My Reviews</h1>
+            <a href="books.html" class="title-link">
+                <h1>Our Book Note</h1>
+            </a>
             <div class="header-right-buttons">
-                <a href="ocn.html" class="icon-button home-link">
-                    <span class="material-symbols-outlined">arrow_back</span>
-                    OCN
+                <a href="mypage.html?source=books" class="icon-button mypage-link">
+                    <span class="material-symbols-outlined">collections_bookmark</span>
+                    My Reviews
+                </a>
+                <a href="mywishlist.html?source=books" class="icon-button wishlist-link">
+                    <span class="material-symbols-outlined">favorite</span>
+                    Wish Lists
                 </a>
                 <button id="logout-button" class="icon-button logout-button">
                     <span class="material-symbols-outlined">logout</span>
@@ -34,21 +39,29 @@
             </div>
         </header>
 
-        <div class="mypage-tabs">
-            <button class="tab-btn active" data-type="ocn">🎬 OCN</button>
-            <button class="tab-btn" data-type="books">📚 Books</button>
-        </div>
+        <section class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="책 제목, 저자를 검색하세요...">
+                <button class="search-button">검색</button>
+            </div>
+            <!-- No category buttons for Books -->
+        </section>
 
-        <main class="results-section" id="my-reviews-list"></main>
+        <main class="results-section" id="home-results">
+            <div id="recent-searches-container" style="display: none;">
+                <h2>최근 검색어</h2>
+                <div id="recent-searches-list"></div>
+            </div>
+        </main>
     </div>
 
     <div class="modal-overlay">
         <div class="modal-content">
             <div id="details-view">
                 <div class="details-layout">
-                    <img id="modal-poster" src="" alt="포스터">
+                    <img id="modal-poster" src="" alt="책 표지">
                     <div class="details-info">
-                        <h2 id="modal-title">영화 제목</h2>
+                        <h2 id="modal-title">책 제목</h2>
                         <div id="modal-credits"></div>
                         <p id="modal-overview"></p>
                     </div>
@@ -59,7 +72,7 @@
             </div>
             <div id="review-view" style="display: none;">
                 <h2 id="review-modal-title">리뷰 작성</h2>
-                <textarea id="review-textarea" placeholder="이 작품에 대한 당신의 생각을 남겨보세요..."></textarea>
+                <textarea id="review-textarea" placeholder="이 책에 대한 당신의 생각을 남겨보세요..."></textarea>
                 <div class="modal-buttons">
                     <button id="back-to-details-btn">돌아가기</button>
                     <button id="save-button">저장</button>
@@ -71,7 +84,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="auth.js" defer></script>
-    <script src="mypage.js" defer></script>
+    <script src="books.js" defer></script>
 </body>
 
 </html>
