@@ -25,6 +25,8 @@ const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
 const tierMeSelect = document.getElementById('tier-me');
 const tierPartnerSelect = document.getElementById('tier-partner');
+const menuToggle = document.getElementById('menu-toggle');
+const dropdownMenu = document.getElementById('dropdown-menu');
 
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
 const GROUP_ID = sessionStorage.getItem('appGroupId');
@@ -38,6 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
         location.href = 'index.html';
         return;
     }
+
+    // ★ 드롭다운 메뉴 토글 추가
+    if (menuToggle && dropdownMenu) {
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdownMenu.contains(e.target) && e.target !== menuToggle) {
+                dropdownMenu.classList.remove('open');
+            }
+        });
+    }
+
     displayRecentSearches();
 });
 

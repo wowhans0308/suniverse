@@ -18,25 +18,34 @@
 <body>
     <div class="main-container">
         <header class="app-title">
-            <a href="index.html" class="icon-button portal-home-link">
-                <span class="material-symbols-outlined">hub</span>
-            </a>
+            <div class="header-left-buttons">
+                <a href="index.html" class="icon-button portal-home-link">
+                    <span class="material-symbols-outlined">hub</span>
+                </a>
+            </div>
             <a href="ocn.html" class="title-link">
                 <h1>Our Cinema Note</h1>
             </a>
             <div class="header-right-buttons">
-                <a href="mypage.html?source=ocn" class="icon-button mypage-link">
-                    <span class="material-symbols-outlined">collections_bookmark</span>
-                    Reviews
-                </a>
-                <a href="mywishlist.html?source=ocn" class="icon-button wishlist-link">
-                    <span class="material-symbols-outlined">favorite</span>
-                    Wish
-                </a>
-                <a href="mytierlist.html?source=ocn" class="icon-button tierlist-link">
-                    <span class="material-symbols-outlined">leaderboard</span>
-                    Tier
-                </a>
+                <div class="menu-wrapper">
+                    <button id="menu-toggle" class="icon-button menu-toggle-btn">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <div class="dropdown-menu" id="dropdown-menu">
+                        <a href="mypage.html?source=ocn" class="dropdown-item">
+                            <span class="material-symbols-outlined">collections_bookmark</span>
+                            Reviews
+                        </a>
+                        <a href="mywishlist.html?source=ocn" class="dropdown-item">
+                            <span class="material-symbols-outlined">favorite</span>
+                            Wish
+                        </a>
+                        <a href="mytierlist.html?source=ocn" class="dropdown-item">
+                            <span class="material-symbols-outlined">leaderboard</span>
+                            Tier
+                        </a>
+                    </div>
+                </div>
                 <button id="logout-button" class="icon-button logout-button">
                     <span class="material-symbols-outlined">logout</span>
                 </button>
@@ -83,7 +92,7 @@
                 <h2 id="review-modal-title">리뷰 작성</h2>
                 <div class="tier-selection">
                     <div class="tier-select-group">
-                        <label for="tier-me">내 티어</label>
+                        <label for="tier-me">지형 티어</label>
                         <select id="tier-me">
                             <option value="">선택안함</option>
                             <option value="S">S</option>
@@ -96,7 +105,7 @@
                         </select>
                     </div>
                     <div class="tier-select-group">
-                        <label for="tier-partner">상대 티어</label>
+                        <label for="tier-partner">수인 티어</label>
                         <select id="tier-partner">
                             <option value="">선택안함</option>
                             <option value="S">S</option>

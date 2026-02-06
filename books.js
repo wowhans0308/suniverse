@@ -24,6 +24,8 @@ const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
 const tierMeSelect = document.getElementById('tier-me');
 const tierPartnerSelect = document.getElementById('tier-partner');
+const menuToggle = document.getElementById('menu-toggle');
+const dropdownMenu = document.getElementById('dropdown-menu');
 
 const GROUP_ID = sessionStorage.getItem('appGroupId');
 const PROXY_URL = 'https://suniverse-api-ew8y.vercel.app/api/books';
@@ -35,6 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
         location.href = 'index.html';
         return;
     }
+
+    // ★ 드롭다운 메뉴 토글 추가
+    if (menuToggle && dropdownMenu) {
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdownMenu.contains(e.target) && e.target !== menuToggle) {
+                dropdownMenu.classList.remove('open');
+            }
+        });
+    }
+
     displayRecentSearches();
 });
 

@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const { data } = await supabaseClient
                 .from('reviews')
                 .select('review_text, tier_me, tier_partner')
-                .eq('movie_id', currentItemData.id)
+                .eq('movie_id', String(currentItemData.id))
                 .eq('group_id', GROUP_ID);
 
             const review = data && data.length > 0 ? data[0] : null;
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tierPartner = tierPartnerSelect ? tierPartnerSelect.value : null;
 
             const reviewData = {
-                movie_id: id,
+                movie_id: String(id),
                 media_type: media_type,
                 review_text: reviewText,
                 group_id: GROUP_ID,
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { error } = await supabaseClient
                     .from('reviews')
                     .delete()
-                    .match({ movie_id: id, group_id: GROUP_ID });
+                    .match({ movie_id: String(id), group_id: GROUP_ID });
 
                 if (error) alert('삭제 실패: ' + error.message);
                 else alert('삭제되었습니다.');
@@ -195,7 +195,7 @@ function updateBackLink() {
 
 async function loadTierLists() {
     if (!tierContentMe || !tierContentPartner) return;
-    
+
     tierContentMe.innerHTML = '<p class="loading">불러오는 중...</p>';
     tierContentPartner.innerHTML = '<p class="loading">불러오는 중...</p>';
 
@@ -262,13 +262,15 @@ function createTierItemHTML(review) {
         '</div>';
 }
 
+// ★ 수정: 문자열 비교로 통일 + 상세정보 모달을 먼저 표시
 function addCardClickListeners() {
     document.querySelectorAll('.tier-item').forEach(item => {
         item.addEventListener('click', async () => {
             const movieId = item.dataset.id;
             const mediaType = item.dataset.type;
 
-            const review = allReviews.find(r => r.movie_id === movieId);
+            // ★ 핵심 수정: String() 변환으로 타입 통일
+            const review = allReviews.find(r => String(r.movie_id) === String(movieId));
 
             if (!review) {
                 alert('데이터를 찾을 수 없습니다.');
@@ -288,8 +290,11 @@ function addCardClickListeners() {
                     currentItemData.overview = details.overview;
                     currentItemData.credits = await fetchCredits(mediaType, movieId);
                 }
+            } else if (mediaType === 'book') {
+                currentItemData.overview = '저장된 리뷰를 확인하세요.';
             }
 
+            // ★ 수정: 상세정보 모달을 먼저 표시
             displayDetailsView();
             if (modalOverlay) modalOverlay.classList.add('visible');
         });
