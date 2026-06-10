@@ -21,20 +21,35 @@ const saveButton = document.getElementById('save-button');
 const logoutButton = document.getElementById('logout-button');
 const tabButtons = document.querySelectorAll('.tab-btn');
 const backLink = document.querySelector('.home-link');
-const tierMeSelect = document.getElementById('tier-me');
-const tierPartnerSelect = document.getElementById('tier-partner');
+const tierMySelect = document.getElementById('tier-my');
+const myUserLabel = document.getElementById('my-user-label');
+const partnerUserLabel = document.getElementById('partner-user-label');
+const partnerTierBadge = document.getElementById('partner-tier-badge');
+const partnerReviewText = document.getElementById('partner-review-text');
 
 const GROUP_ID = sessionStorage.getItem('appGroupId');
+const USER_ID = sessionStorage.getItem('appUserId');
+
+const MY_NAME = USER_ID === 'me' ? '지형' : '수인';
+const PARTNER_NAME = USER_ID === 'me' ? '수인' : '지형';
+const MY_TIER_FIELD = USER_ID === 'me' ? 'tier_me' : 'tier_partner';
+const MY_REVIEW_FIELD = USER_ID === 'me' ? 'review_me' : 'review_partner';
+const PARTNER_TIER_FIELD = USER_ID === 'me' ? 'tier_partner' : 'tier_me';
+const PARTNER_REVIEW_FIELD = USER_ID === 'me' ? 'review_partner' : 'review_me';
+
 const urlParams = new URLSearchParams(window.location.search);
 const source = urlParams.get('source') || 'ocn';
 let currentTab = source;
 let currentMovieData = {};
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (!GROUP_ID) {
+    if (!GROUP_ID || !USER_ID) {
         location.href = 'index.html';
         return;
     }
+
+    if (myUserLabel) myUserLabel.textContent = MY_NAME;
+    if (partnerUserLabel) partnerUserLabel.textContent = PARTNER_NAME;
 
     tabButtons.forEach(btn => {
         if (btn.dataset.type === source) {
@@ -94,24 +109,33 @@ async function loadMyReviews() {
         return;
     }
 
-    reviews.sort((a, b) => (a.content_title || '').localeCompare(b.content_title || ''));
+    const myReviews = reviews.filter(r => r[MY_TIER_FIELD] || r[MY_REVIEW_FIELD]);
 
-    const cardsHTML = reviews.map(review => createReviewCardHTML(review)).join('');
+    if (myReviews.length === 0) {
+        reviewsListContainer.innerHTML = '<p class="no-results">아직 작성한 리뷰가 없습니다.</p>';
+        return;
+    }
+
+    myReviews.sort((a, b) => (a.content_title || '').localeCompare(b.content_title || ''));
+
+    const cardsHTML = myReviews.map(review => createReviewCardHTML(review)).join('');
     reviewsListContainer.innerHTML = cardsHTML;
 }
 
 function createReviewCardHTML(review) {
     const title = review.content_title || '제목 없음';
     const image = review.content_image || 'https://placehold.co/150x220?text=No+Image';
-    const reviewPreview = review.review_text
-        ? (review.review_text.length > 80
-            ? review.review_text.substring(0, 80) + '...'
-            : review.review_text)
+    const myReview = review[MY_REVIEW_FIELD] || '';
+    const reviewPreview = myReview
+        ? (myReview.length > 80 ? myReview.substring(0, 80) + '...' : myReview)
         : '리뷰 내용 없음';
+    const myTier = review[MY_TIER_FIELD] || '';
+    const tierClass = myTier ? 'tier-color-' + (myTier === 'A+' ? 'Aplus' : myTier) : '';
 
     return '<div class="movie-card" data-id="' + review.movie_id + '" data-type="' + review.media_type + '">' +
         '<div class="movie-card-poster">' +
         '<img src="' + image + '" alt="' + title + '">' +
+        (myTier ? '<div class="card-tier-badge ' + tierClass + '">' + myTier + '</div>' : '') +
         '</div>' +
         '<div class="movie-info">' +
         '<h3>' + title + '</h3>' +
@@ -124,7 +148,6 @@ function closeModal() { if (modalOverlay) modalOverlay.classList.remove('visible
 if (closeButton) closeButton.addEventListener('click', closeModal);
 if (modalOverlay) modalOverlay.addEventListener('click', (event) => { if (event.target === modalOverlay) closeModal(); });
 
-// ★ 수정: 카드 클릭 시 바로 리뷰창이 아닌 상세정보 모달을 먼저 표시
 if (reviewsListContainer) {
     reviewsListContainer.addEventListener('click', async (event) => {
         const card = event.target.closest('.movie-card');
@@ -133,7 +156,6 @@ if (reviewsListContainer) {
             const mediaType = card.dataset.type;
 
             if (mediaType === 'book') {
-                // 도서: DB에서 저장된 정보 사용
                 const { data: reviewList } = await supabaseClient
                     .from('reviews')
                     .select('*')
@@ -160,7 +182,6 @@ if (reviewsListContainer) {
                 if (modalOverlay) modalOverlay.classList.add('visible');
 
             } else {
-                // 영화/TV: TMDB API에서 상세정보 가져오기
                 const details = await fetchItemDetails(mediaType, movieId);
                 if (!details) {
                     alert('상세 정보를 불러오는 데 실패했습니다.');
@@ -175,7 +196,6 @@ if (reviewsListContainer) {
     });
 }
 
-// 상세정보 표시 - OCN (영화/TV)
 async function displayDetailsViewForOCN() {
     const posterPath = currentMovieData.poster_path
         ? 'https://image.tmdb.org/t/p/w500' + currentMovieData.poster_path
@@ -190,7 +210,6 @@ async function displayDetailsViewForOCN() {
     if (reviewView) reviewView.style.display = 'none';
 }
 
-// 상세정보 표시 - Books
 function displayDetailsView() {
     const title = currentMovieData.title || currentMovieData.name || '제목 없음';
     const image = currentMovieData.image || 'https://placehold.co/300x450?text=No+Image';
@@ -204,7 +223,6 @@ function displayDetailsView() {
     if (reviewView) reviewView.style.display = 'none';
 }
 
-// ★ 리뷰 쓰기/수정 버튼 클릭 시 리뷰 입력창으로 전환
 if (showReviewViewBtn) {
     showReviewViewBtn.addEventListener('click', async () => {
         const title = currentMovieData.title || currentMovieData.name;
@@ -214,15 +232,32 @@ if (showReviewViewBtn) {
 
         const { data } = await supabaseClient
             .from('reviews')
-            .select('review_text, tier_me, tier_partner')
+            .select('review_me, review_partner, tier_me, tier_partner')
             .eq('movie_id', id)
             .eq('group_id', GROUP_ID);
 
         const review = data && data.length > 0 ? data[0] : null;
 
-        if (reviewTextarea) reviewTextarea.value = review?.review_text || '';
-        if (tierMeSelect) tierMeSelect.value = review?.tier_me || '';
-        if (tierPartnerSelect) tierPartnerSelect.value = review?.tier_partner || '';
+        if (tierMySelect) tierMySelect.value = review?.[MY_TIER_FIELD] || '';
+        if (reviewTextarea) reviewTextarea.value = review?.[MY_REVIEW_FIELD] || '';
+
+        const pTier = review?.[PARTNER_TIER_FIELD] || '';
+        const pText = review?.[PARTNER_REVIEW_FIELD] || '';
+
+        if (partnerTierBadge) {
+            if (pTier) {
+                partnerTierBadge.textContent = pTier;
+                partnerTierBadge.className = 'partner-tier-badge tier-badge-visible tier-color-' + (pTier === 'A+' ? 'Aplus' : pTier);
+            } else {
+                partnerTierBadge.textContent = '';
+                partnerTierBadge.className = 'partner-tier-badge';
+            }
+        }
+        if (partnerReviewText) {
+            partnerReviewText.textContent = pText || '아직 작성된 리뷰가 없습니다.';
+            partnerReviewText.style.color = pText ? '' : 'var(--text-muted-color)';
+            partnerReviewText.style.fontStyle = pText ? '' : 'italic';
+        }
 
         if (reviewTextarea) {
             setTimeout(() => reviewTextarea.focus(), 100);
@@ -253,7 +288,6 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// ★ 수정: 돌아가기 버튼 → 상세정보로 복귀 (모달 닫기가 아님)
 if (backToDetailsBtn) {
     backToDetailsBtn.addEventListener('click', () => {
         if (detailsView) detailsView.style.display = 'block';
@@ -267,40 +301,35 @@ if (saveButton) {
         const media_type = currentMovieData.media_type;
         const title = currentMovieData.title || currentMovieData.name;
         const image = currentMovieData.image || (currentMovieData.poster_path ? 'https://image.tmdb.org/t/p/w500' + currentMovieData.poster_path : '');
-        const reviewText = reviewTextarea.value.trim();
-        const tierMe = tierMeSelect ? tierMeSelect.value : null;
-        const tierPartner = tierPartnerSelect ? tierPartnerSelect.value : null;
+        const reviewText = reviewTextarea ? reviewTextarea.value.trim() : '';
+        const myTier = tierMySelect ? tierMySelect.value : null;
 
         const reviewData = {
             movie_id: id,
             media_type: media_type,
-            review_text: reviewText,
             group_id: GROUP_ID,
             content_title: title,
             content_image: image,
-            tier_me: tierMe || null,
-            tier_partner: tierPartner || null
+            [MY_TIER_FIELD]: myTier || null,
+            [MY_REVIEW_FIELD]: reviewText || null
         };
 
-        if (reviewText || tierMe || tierPartner) {
+        if (reviewText || myTier) {
             const { error } = await supabaseClient.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
             if (error) { alert('리뷰 수정에 실패했습니다: ' + error.message); }
             else { alert('저장되었습니다!'); }
         } else {
-            const { error } = await supabaseClient.from('reviews').delete().match({ movie_id: id, group_id: GROUP_ID });
-            if (error) { alert('리뷰 삭제에 실패했습니다: ' + error.message); }
-            else { alert('삭제되었습니다.'); }
+            const updateData = {
+                [MY_TIER_FIELD]: null,
+                [MY_REVIEW_FIELD]: null
+            };
+            const { error } = await supabaseClient.from('reviews').update(updateData).match({ movie_id: id, group_id: GROUP_ID });
+            if (error) { alert('업데이트 실패: ' + error.message); }
+            else { alert('내 리뷰가 삭제되었습니다.'); }
         }
         closeModal();
         loadMyReviews();
     });
-}
-
-function stripHtml(html) {
-    if (!html) return '';
-    let tmp = document.createElement("DIV");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
 }
 
 async function fetchItemDetails(mediaType, id) {

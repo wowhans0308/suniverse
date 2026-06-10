@@ -59,10 +59,12 @@
             </div>
             <div id="review-view" style="display: none;">
                 <h2 id="review-modal-title">리뷰 작성</h2>
-                <div class="tier-selection">
+
+                <div class="review-user-block my-review-block">
+                    <div class="review-user-label" id="my-user-label">지형</div>
                     <div class="tier-select-group">
-                        <label for="tier-me">지형 티어</label>
-                        <select id="tier-me">
+                        <label for="tier-my">티어</label>
+                        <select id="tier-my">
                             <option value="">선택안함</option>
                             <option value="S">S</option>
                             <option value="A+">A+</option>
@@ -73,21 +75,17 @@
                             <option value="F">F</option>
                         </select>
                     </div>
-                    <div class="tier-select-group">
-                        <label for="tier-partner">수인 티어</label>
-                        <select id="tier-partner">
-                            <option value="">선택안함</option>
-                            <option value="S">S</option>
-                            <option value="A+">A+</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                            <option value="F">F</option>
-                        </select>
-                    </div>
+                    <textarea id="review-textarea" placeholder="이 작품에 대한 당신의 생각을 남겨보세요..."></textarea>
                 </div>
-                <textarea id="review-textarea" placeholder="이 작품에 대한 당신의 생각을 남겨보세요..."></textarea>
+
+                <div class="review-user-block partner-review-block" id="partner-review-block">
+                    <div class="review-user-label partner-label" id="partner-user-label">수인</div>
+                    <div class="partner-tier-row">
+                        <span class="partner-tier-badge" id="partner-tier-badge"></span>
+                    </div>
+                    <p class="partner-review-text" id="partner-review-text">아직 작성된 리뷰가 없습니다.</p>
+                </div>
+
                 <div class="modal-buttons">
                     <button id="back-to-details-btn">돌아가기</button>
                     <button id="save-button">저장</button>

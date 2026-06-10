@@ -23,25 +23,40 @@ const saveButton = document.getElementById('save-button');
 const recentSearchesContainer = document.getElementById('recent-searches-container');
 const recentSearchesList = document.getElementById('recent-searches-list');
 const logoutButton = document.getElementById('logout-button');
-const tierMeSelect = document.getElementById('tier-me');
-const tierPartnerSelect = document.getElementById('tier-partner');
+const tierMySelect = document.getElementById('tier-my');
 const menuToggle = document.getElementById('menu-toggle');
 const dropdownMenu = document.getElementById('dropdown-menu');
+const myUserLabel = document.getElementById('my-user-label');
+const partnerUserLabel = document.getElementById('partner-user-label');
+const partnerTierBadge = document.getElementById('partner-tier-badge');
+const partnerReviewText = document.getElementById('partner-review-text');
+const partnerReviewBlock = document.getElementById('partner-review-block');
 
 const API_KEY = '025ca0b1f29347fb2fcd2d4d23cffc18';
 const GROUP_ID = sessionStorage.getItem('appGroupId');
+const USER_ID = sessionStorage.getItem('appUserId'); // 'me' = 지형, 'partner' = 수인
+
+const MY_NAME = USER_ID === 'me' ? '지형' : '수인';
+const PARTNER_NAME = USER_ID === 'me' ? '수인' : '지형';
+const MY_TIER_FIELD = USER_ID === 'me' ? 'tier_me' : 'tier_partner';
+const MY_REVIEW_FIELD = USER_ID === 'me' ? 'review_me' : 'review_partner';
+const PARTNER_TIER_FIELD = USER_ID === 'me' ? 'tier_partner' : 'tier_me';
+const PARTNER_REVIEW_FIELD = USER_ID === 'me' ? 'review_partner' : 'review_me';
+
 let currentCategory = '전체';
 let lastResults = [];
 let currentMovieData = {};
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (!GROUP_ID) {
+    if (!GROUP_ID || !USER_ID) {
         document.body.innerHTML = '';
         location.href = 'index.html';
         return;
     }
 
-    // ★ 드롭다운 메뉴 토글 추가
+    if (myUserLabel) myUserLabel.textContent = MY_NAME;
+    if (partnerUserLabel) partnerUserLabel.textContent = PARTNER_NAME;
+
     if (menuToggle && dropdownMenu) {
         menuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -151,8 +166,9 @@ async function displayResults() {
     const cardPromises = itemsToDisplay.map(item => createCardHTML(item));
     const cardsHTML = (await Promise.all(cardPromises)).join('');
     resultsSection.innerHTML = cardsHTML;
-    
+
     await markWishlistedItems();
+    await markReviewedItems();
 }
 
 async function createCardHTML(item) {
@@ -181,9 +197,9 @@ async function markWishlistedItems() {
         .from('wishlists')
         .select('content_id')
         .eq('group_id', GROUP_ID);
-    
+
     const wishlistedIds = wishlists?.map(w => w.content_id) || [];
-    
+
     document.querySelectorAll('.wishlist-btn').forEach(btn => {
         if (wishlistedIds.includes(btn.dataset.id)) {
             btn.classList.add('active');
@@ -191,10 +207,33 @@ async function markWishlistedItems() {
     });
 }
 
+async function markReviewedItems() {
+    const { data: reviews } = await supabaseClient
+        .from('reviews')
+        .select('movie_id, ' + MY_TIER_FIELD)
+        .eq('group_id', GROUP_ID)
+        .not(MY_TIER_FIELD, 'is', null);
+
+    if (!reviews) return;
+
+    reviews.forEach(r => {
+        const card = document.querySelector('.movie-card[data-id="' + r.movie_id + '"]');
+        if (card) {
+            const existing = card.querySelector('.card-tier-badge');
+            if (!existing) {
+                const badge = document.createElement('div');
+                badge.className = 'card-tier-badge tier-badge-' + (r[MY_TIER_FIELD] === 'A+' ? 'Aplus' : r[MY_TIER_FIELD]);
+                badge.textContent = r[MY_TIER_FIELD];
+                card.querySelector('.movie-card-poster').appendChild(badge);
+            }
+        }
+    });
+}
+
 async function handleWishlistClick(btn) {
     const contentId = btn.dataset.id;
     const mediaType = btn.dataset.type;
-    
+
     let content = null;
     for (const item of lastResults) {
         if (item.id?.toString() === contentId) {
@@ -209,26 +248,26 @@ async function handleWishlistClick(btn) {
             }
         }
     }
-    
+
     if (!content) return;
-    
+
     const title = content.title || content.name;
     const image = content.poster_path ? 'https://image.tmdb.org/t/p/w500' + content.poster_path : '';
-    
+
     const { data: existingList } = await supabaseClient
         .from('wishlists')
         .select('id')
         .eq('content_id', contentId)
         .eq('group_id', GROUP_ID);
-    
+
     const existing = existingList && existingList.length > 0 ? existingList[0] : null;
-    
+
     if (existing) {
         await supabaseClient
             .from('wishlists')
             .delete()
             .match({ content_id: contentId, group_id: GROUP_ID });
-        
+
         btn.classList.remove('active');
         alert('위시리스트에서 제거되었습니다.');
     } else {
@@ -241,7 +280,7 @@ async function handleWishlistClick(btn) {
                 content_image: image,
                 group_id: GROUP_ID
             });
-        
+
         btn.classList.add('active');
         alert('위시리스트에 추가되었습니다!');
     }
@@ -309,7 +348,7 @@ if (resultsSection) {
             await handleWishlistClick(wishlistBtn);
             return;
         }
-        
+
         const card = event.target.closest('.movie-card');
         if (card) {
             const movieId = card.dataset.id;
@@ -339,19 +378,36 @@ if (showReviewViewBtn) {
         const title = currentMovieData.title || currentMovieData.name;
         const id = currentMovieData.id;
         if (reviewModalTitle) reviewModalTitle.textContent = title + ' - 리뷰';
-        
+
         const { data } = await supabaseClient
             .from('reviews')
-            .select('review_text, tier_me, tier_partner')
+            .select('review_me, review_partner, tier_me, tier_partner')
             .eq('movie_id', id)
             .eq('group_id', GROUP_ID);
-        
+
         const review = data && data.length > 0 ? data[0] : null;
-        
-        if (reviewTextarea) reviewTextarea.value = review?.review_text || '';
-        if (tierMeSelect) tierMeSelect.value = review?.tier_me || '';
-        if (tierPartnerSelect) tierPartnerSelect.value = review?.tier_partner || '';
-        
+
+        if (tierMySelect) tierMySelect.value = review?.[MY_TIER_FIELD] || '';
+        if (reviewTextarea) reviewTextarea.value = review?.[MY_REVIEW_FIELD] || '';
+
+        const partnerTier = review?.[PARTNER_TIER_FIELD] || '';
+        const partnerText = review?.[PARTNER_REVIEW_FIELD] || '';
+
+        if (partnerTierBadge) {
+            if (partnerTier) {
+                partnerTierBadge.textContent = partnerTier;
+                partnerTierBadge.className = 'partner-tier-badge tier-badge-visible tier-color-' + (partnerTier === 'A+' ? 'Aplus' : partnerTier);
+            } else {
+                partnerTierBadge.textContent = '';
+                partnerTierBadge.className = 'partner-tier-badge';
+            }
+        }
+        if (partnerReviewText) {
+            partnerReviewText.textContent = partnerText || '아직 작성된 리뷰가 없습니다.';
+            partnerReviewText.style.color = partnerText ? '' : 'var(--text-muted-color)';
+            partnerReviewText.style.fontStyle = partnerText ? '' : 'italic';
+        }
+
         if (reviewTextarea) reviewTextarea.focus();
         if (detailsView) detailsView.style.display = 'none';
         if (reviewView) reviewView.style.display = 'block';
@@ -391,29 +447,41 @@ if (saveButton) {
         const media_type = currentMovieData.media_type;
         const title = currentMovieData.title || currentMovieData.name;
         const poster_path = currentMovieData.poster_path;
-        const reviewText = reviewTextarea.value.trim();
-        const tierMe = tierMeSelect ? tierMeSelect.value : null;
-        const tierPartner = tierPartnerSelect ? tierPartnerSelect.value : null;
-        
-        const reviewData = { 
-            movie_id: id, 
-            media_type: media_type, 
-            review_text: reviewText, 
+        const reviewText = reviewTextarea ? reviewTextarea.value.trim() : '';
+        const myTier = tierMySelect ? tierMySelect.value : null;
+
+        const reviewData = {
+            movie_id: id,
+            media_type: media_type,
             group_id: GROUP_ID,
             content_title: title,
             content_image: poster_path ? 'https://image.tmdb.org/t/p/w500' + poster_path : '',
-            tier_me: tierMe || null,
-            tier_partner: tierPartner || null
+            [MY_TIER_FIELD]: myTier || null,
+            [MY_REVIEW_FIELD]: reviewText || null
         };
-        
-        if (reviewText || tierMe || tierPartner) {
+
+        if (reviewText || myTier) {
             const { error } = await supabaseClient.from('reviews').upsert(reviewData, { onConflict: 'movie_id, group_id' });
             if (error) alert('리뷰 저장 실패: ' + error.message);
-            else alert('저장되었습니다!');
+            else {
+                alert('저장되었습니다!');
+                await markReviewedItems();
+            }
         } else {
-            const { error } = await supabaseClient.from('reviews').delete().match({ movie_id: id, group_id: GROUP_ID });
-            if (error) alert('삭제 실패: ' + error.message);
-            else alert('삭제되었습니다.');
+            const updateData = {
+                [MY_TIER_FIELD]: null,
+                [MY_REVIEW_FIELD]: null
+            };
+            const { error } = await supabaseClient.from('reviews').update(updateData).match({ movie_id: id, group_id: GROUP_ID });
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    alert('삭제할 리뷰가 없습니다.');
+                } else {
+                    alert('업데이트 실패: ' + error.message);
+                }
+            } else {
+                alert('내 리뷰가 삭제되었습니다.');
+            }
         }
         if (backToDetailsBtn) backToDetailsBtn.click();
     });

@@ -769,6 +769,88 @@ a.icon-button {
     border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* ===== 리뷰 모달 사용자 블록 ===== */
+.review-user-block {
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+
+.my-review-block {
+    background-color: rgba(74, 144, 226, 0.08);
+    border: 1px solid rgba(74, 144, 226, 0.3);
+}
+
+.partner-review-block {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+}
+
+.review-user-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.review-user-label.partner-label {
+    color: var(--text-muted-color);
+}
+
+.my-review-block .tier-select-group {
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.my-review-block #review-textarea {
+    margin-bottom: 0;
+}
+
+.partner-tier-row {
+    margin-bottom: 8px;
+}
+
+.partner-tier-badge {
+    display: none;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.partner-tier-badge.tier-badge-visible {
+    display: inline-block;
+}
+
+.partner-review-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+/* ===== 티어 컬러 (카드 뱃지 + 파트너 뱃지 공통) ===== */
+.tier-color-S, .card-tier-badge.tier-badge-S { background-color: #ff7675; color: #fff; }
+.tier-color-Aplus, .card-tier-badge.tier-badge-Aplus { background-color: #fdcb6e; color: #000; }
+.tier-color-A, .card-tier-badge.tier-badge-A { background-color: #ffeaa7; color: #000; }
+.tier-color-B, .card-tier-badge.tier-badge-B { background-color: #81ecec; color: #000; }
+.tier-color-C, .card-tier-badge.tier-badge-C { background-color: #74b9ff; color: #000; }
+.tier-color-D, .card-tier-badge.tier-badge-D { background-color: #a29bfe; color: #fff; }
+.tier-color-F, .card-tier-badge.tier-badge-F { background-color: #636e72; color: #fff; }
+
+/* ===== 카드 티어 뱃지 ===== */
+.card-tier-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    z-index: 5;
+}
+
 /* ===== 티어리스트 ===== */
 .tierlist-container {
     display: grid;
