@@ -18,7 +18,7 @@
             return;
         }
 
-        if (password === "jihyung") {
+        if (password === "jeehyung") {
             groupId = "v1";
             userId = "me";
             break;
