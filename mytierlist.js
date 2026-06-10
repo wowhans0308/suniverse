@@ -116,16 +116,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const title = currentItemData.title || '제목 없음';
             if (reviewModalTitle) reviewModalTitle.textContent = title + ' - 리뷰';
 
-            const { data } = await supabaseClient
+            const { data, error: reviewErr } = await supabaseClient
                 .from('reviews')
-                .select('review_me, review_partner, tier_me, tier_partner')
+                .select('*')
                 .eq('movie_id', String(currentItemData.id))
                 .eq('group_id', GROUP_ID);
+
+            if (reviewErr) console.error('리뷰 로드 오류:', reviewErr.message);
 
             const review = data && data.length > 0 ? data[0] : null;
 
             if (reviewTextarea) {
-                reviewTextarea.value = review?.[MY_REVIEW_FIELD] || '';
+                reviewTextarea.value = (review?.[MY_REVIEW_FIELD] ?? review?.review_text ?? '');
                 reviewTextarea.focus();
             }
             if (tierMySelect) tierMySelect.value = review?.[MY_TIER_FIELD] || '';

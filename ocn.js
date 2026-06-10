@@ -210,9 +210,8 @@ async function markWishlistedItems() {
 async function markReviewedItems() {
     const { data: reviews } = await supabaseClient
         .from('reviews')
-        .select('movie_id, ' + MY_TIER_FIELD)
-        .eq('group_id', GROUP_ID)
-        .not(MY_TIER_FIELD, 'is', null);
+        .select('movie_id, tier_me, tier_partner')
+        .eq('group_id', GROUP_ID);
 
     if (!reviews) return;
 
@@ -379,16 +378,18 @@ if (showReviewViewBtn) {
         const id = currentMovieData.id;
         if (reviewModalTitle) reviewModalTitle.textContent = title + ' - 리뷰';
 
-        const { data } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from('reviews')
-            .select('review_me, review_partner, tier_me, tier_partner')
+            .select('*')
             .eq('movie_id', id)
             .eq('group_id', GROUP_ID);
+
+        if (error) console.error('리뷰 로드 오류:', error.message);
 
         const review = data && data.length > 0 ? data[0] : null;
 
         if (tierMySelect) tierMySelect.value = review?.[MY_TIER_FIELD] || '';
-        if (reviewTextarea) reviewTextarea.value = review?.[MY_REVIEW_FIELD] || '';
+        if (reviewTextarea) reviewTextarea.value = (review?.[MY_REVIEW_FIELD] ?? review?.review_text ?? '');
 
         const partnerTier = review?.[PARTNER_TIER_FIELD] || '';
         const partnerText = review?.[PARTNER_REVIEW_FIELD] || '';
